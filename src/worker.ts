@@ -190,6 +190,7 @@ async function handleCreatePaste(request: Request, env: Env) {
             content: string;
             language?: string;
             visibility?: 'public' | 'private';
+            pinned?: number;
             expires_in?: string;
         };
 
@@ -209,9 +210,9 @@ async function handleCreatePaste(request: Request, env: Env) {
         const expiresAt = computeExpiresAt(body.expires_in);
 
         const result = await env.DB.prepare(
-            'INSERT INTO pastes (slug, title, content, language, visibility, expires_at) VALUES (?, ?, ?, ?, ?, ?)'
+            'INSERT INTO pastes (slug, title, content, language, visibility, pinned, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
         )
-            .bind(slug, body.title || '', body.content, body.language || 'plaintext', body.visibility || 'private', expiresAt)
+            .bind(slug, body.title || '', body.content, body.language || 'plaintext', body.visibility || 'private', body.pinned ? 1 : 0, expiresAt)
             .run();
 
         if (!result.success) return json({ error: 'Failed to create paste' }, 500);

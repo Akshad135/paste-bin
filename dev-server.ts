@@ -242,6 +242,7 @@ async function handleCreatePaste(req: Request) {
       content: string;
       language?: string;
       visibility?: "public" | "private";
+      pinned?: number;
       expires_in?: string;
     };
 
@@ -260,13 +261,14 @@ async function handleCreatePaste(req: Request) {
     const expiresAt = computeExpiresAt(body.expires_in);
 
     db.query(
-      "INSERT INTO pastes (slug, title, content, language, visibility, expires_at) VALUES (?, ?, ?, ?, ?, ?)"
+      "INSERT INTO pastes (slug, title, content, language, visibility, pinned, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
     ).run(
       slug,
       body.title || "",
       body.content,
       body.language || "plaintext",
       body.visibility || "private",
+      body.pinned ? 1 : 0,
       expiresAt
     );
 

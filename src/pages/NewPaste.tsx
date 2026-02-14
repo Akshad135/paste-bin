@@ -15,6 +15,8 @@ import { EarthIcon } from '@/components/ui/animated-earth';
 import { LockIcon } from '@/components/ui/animated-lock';
 import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
 import { HourglassIcon } from '@/components/ui/animated-hourglass';
+import { PinIcon } from '@/components/ui/animated-pin';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export function NewPaste() {
@@ -24,6 +26,7 @@ export function NewPaste() {
     const [content, setContent] = useState('');
     const [language, setLanguage] = useState('plaintext');
     const [isPublic, setIsPublic] = useState(false);
+    const [isPinned, setIsPinned] = useState(false);
     const [expiresIn, setExpiresIn] = useState('never');
     const [loading, setLoading] = useState(false);
 
@@ -45,6 +48,7 @@ export function NewPaste() {
                 content,
                 language,
                 visibility: isPublic ? 'public' : 'private',
+                pinned: isPinned ? 1 : 0,
                 expires_in: expiresIn === 'never' ? undefined : expiresIn,
             });
             toast.success('Paste created!');
@@ -125,58 +129,84 @@ export function NewPaste() {
                             />
                         </div>
 
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-6 pt-6 mt-4 border-t border-border/40">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 md:gap-6 pt-6 mt-4 border-t border-border/40">
 
-                            {/* Settings Group */}
-                            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full sm:w-auto">
-                                <div className="flex items-center justify-center w-full sm:w-auto">
-                                    <div className="flex items-center gap-2">
-                                        <Switch
-                                            checked={isPublic}
-                                            onCheckedChange={setIsPublic}
-                                            id="public-toggle"
-                                            className="scale-90"
-                                        />
-                                        <Label
-                                            htmlFor="public-toggle"
-                                            className="text-sm font-medium cursor-pointer select-none flex items-center gap-1.5 text-muted-foreground min-w-[80px]"
-                                        >
-                                            {isPublic ? (
-                                                <><EarthIcon size={14} className="text-emerald-500" /> Public</>
-                                            ) : (
-                                                <><LockIcon size={14} className="text-amber-500" /> Private</>
-                                            )}
-                                        </Label>
-                                    </div>
+                            {/* Line 1 (Mobile): Toggles */}
+                            {/* Desktop: First part of the row */}
+                            <div className="flex items-center justify-center md:justify-start gap-6 w-full md:w-auto order-1 md:order-none">
+                                <div className="flex items-center gap-2">
+                                    <Switch
+                                        checked={isPinned}
+                                        onCheckedChange={setIsPinned}
+                                        id="pin-toggle"
+                                        className="scale-90 md:scale-75 md:origin-left"
+                                    />
+                                    <Label
+                                        htmlFor="pin-toggle"
+                                        className={cn(
+                                            "text-sm md:text-xs font-medium cursor-pointer select-none flex items-center gap-1.5 transition-colors whitespace-nowrap",
+                                            isPinned ? "text-primary" : "text-muted-foreground"
+                                        )}
+                                    >
+                                        <PinIcon size={14} className={cn("transition-transform", isPinned && "rotate-45")} />
+                                        <span className="inline">Pinned</span>
+                                    </Label>
                                 </div>
 
-                                <div className="hidden sm:block h-4 w-px bg-border/60" />
+                                <div className="h-3 w-px bg-border/60" />
 
                                 <div className="flex items-center gap-2">
-                                    <HourglassIcon size={14} className="text-muted-foreground shrink-0" />
-                                    <Select value={expiresIn} onValueChange={setExpiresIn}>
-                                        <SelectTrigger className="w-[120px] h-8 text-xs bg-transparent border-border/60 focus:ring-1 focus:ring-primary/20">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {EXPIRATION_OPTIONS.map((opt) => (
-                                                <SelectItem key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <Switch
+                                        checked={isPublic}
+                                        onCheckedChange={setIsPublic}
+                                        id="public-toggle"
+                                        className="scale-90 md:scale-75 md:origin-left"
+                                    />
+                                    <Label
+                                        htmlFor="public-toggle"
+                                        className="text-sm md:text-xs font-medium cursor-pointer select-none flex items-center gap-1.5 text-muted-foreground whitespace-nowrap w-[70px] md:w-[70px]"
+                                    >
+                                        {isPublic ? (
+                                            <><EarthIcon size={14} className="text-emerald-500" /> Public</>
+                                        ) : (
+                                            <><LockIcon size={14} className="text-amber-500" /> Private</>
+                                        )}
+                                    </Label>
                                 </div>
                             </div>
 
-                            <Button
-                                type="submit"
-                                disabled={loading}
-                                className="w-full sm:w-auto h-10 sm:h-8 text-xs font-medium min-w-[100px]"
-                            >
-                                {loading && <LoaderPinwheelIcon size={14} className="mr-1.5 animate-spin" />}
-                                Create Paste
-                            </Button>
+                            {/* Line 2 (Mobile): Expiration */}
+                            {/* Desktop: Middle part of the row */}
+                            <div className="flex items-center justify-center md:justify-start w-full md:w-auto gap-3 order-2 md:order-none md:border-l md:border-border/60 md:pl-6">
+                                <HourglassIcon size={14} className="text-muted-foreground shrink-0" />
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground md:hidden">
+                                    <span>Expires in</span>
+                                </div>
+                                <Select value={expiresIn} onValueChange={setExpiresIn}>
+                                    <SelectTrigger className="w-[140px] md:w-[120px] h-9 md:h-8 text-sm md:text-xs bg-transparent border-border/60 focus:ring-1 focus:ring-primary/20 px-3 md:px-2">
+                                        <SelectValue placeholder="Expires" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {EXPIRATION_OPTIONS.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            {/* Line 3 (Mobile): Buttons */}
+                            {/* Desktop: End of the row */}
+                            <div className="flex items-center justify-center md:justify-end gap-3 w-full md:w-auto order-3 md:order-none">
+                                <Button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-auto md:w-auto h-10 md:h-8 px-6 md:px-3 text-sm md:text-xs font-medium min-w-[120px] md:min-w-0"
+                                >
+                                    {loading ? <LoaderPinwheelIcon size={14} className="animate-spin" /> : "Create Paste"}
+                                </Button>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>

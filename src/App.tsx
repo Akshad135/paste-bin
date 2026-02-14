@@ -14,6 +14,7 @@ function ThemedToaster() {
   return (
     <Toaster
       position="bottom-center"
+      duration={2000}
       toastOptions={{
         style: {
           background: 'hsl(var(--card))',

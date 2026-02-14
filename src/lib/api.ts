@@ -285,6 +285,7 @@ export const api = {
             content: string;
             language?: string;
             visibility?: 'public' | 'private';
+            pinned?: number;
             expires_in?: string;
         }) =>
             request<{ slug: string; success: boolean }>('/paste', {
