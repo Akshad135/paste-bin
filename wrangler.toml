@@ -1,8 +1,15 @@
 name = "pastebin"
+main = "src/worker.ts"
 compatibility_date = "2025-01-01"
-pages_build_output_dir = "dist"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./dist"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "pastebin-db"
 database_id = "local"
+
+[observability]
+enabled = false

@@ -1,6 +1,12 @@
 # pastebin
 
-A self-hosted, private-first pastebin with syntax highlighting. Deploy on Cloudflare Pages for free, or run it anywhere with Bun.
+A self-hosted, private-first pastebin with syntax highlighting. Deploy on Cloudflare for free, or run it anywhere with Bun.
+
+<div align="center">
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Akshad135/paste-bin)
+
+</div>
 
 ## Features
 
@@ -8,34 +14,35 @@ A self-hosted, private-first pastebin with syntax highlighting. Deploy on Cloudf
 - **Single-user auth** — passphrase-protected, no accounts needed
 - **PWA** — installable on mobile (Samsung Internet, Chrome, etc.)
 - **Offline support** — cached pastes viewable without internet
-- **5 color palettes** — dark & light modes for each
+- **5 color palettes** — dark and light modes for each
 - **Pin pastes** — keep important pastes at the top
 - **Public / private** — share pastes or keep them to yourself
 - **Responsive** — works on desktop, tablet, and mobile
 - **Zero tracking** — no analytics, no cookies beyond auth
 
-## Quick Start — Cloudflare Pages
+## Screenshots
 
-The easiest way: fork → configure → deploy. Free tier is more than enough.
+<div align="center">
 
-1. **Fork** this repo
-2. Go to **Cloudflare Dashboard** → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-3. Select your fork and configure:
-   - **Build command**: `bun run build`
-   - **Build output**: `dist`
-4. Add **environment variable**: `AUTH_KEY` = your secret passphrase
-5. **Deploy**
+![Tokyo Night Dark](public/themes/tokyo-night-dark.png)
 
-### Database Setup (one-time)
+*Tokyo Night — Dark*
 
-After the first deploy:
+![Catppuccin Light](public/themes/catppuccin-light.png)
 
-1. **D1** → Create database → name it `pastebin-db`
-2. **Pages project** → **Settings** → **Functions** → **D1 Bindings**:
-   - Variable name: `DB`
-   - Database: `pastebin-db`
-3. **D1** → `pastebin-db` → **Console** → paste contents of `schema.sql` → **Execute**
-4. **Redeploy** the latest commit
+*Catppuccin — Light*
+
+</div>
+
+**Other themes:** [Catppuccin Dark](public/themes/catppuccin-dark.png) · [Dracula Dark](public/themes/dracula-dark.png) · [Dracula Light](public/themes/dracula-light.png) · [Nord Dark](public/themes/nord-dark.png) · [Nord Light](public/themes/nord-light.png) · [Tokyo Night Light](public/themes/tokyo-night-light.png) · [Shadcn Dark](public/themes/shadcn-dark.png) · [Shadcn Light](public/themes/shadcn-light.png)
+
+## Deploy — One Click
+
+Click the deploy button above, set your `AUTH_KEY` secret when prompted, and you're done. Cloudflare automatically creates the D1 database and runs migrations.
+
+Cloudflare D1's free tier gives you 500 MB of storage — enough for roughly **100,000 pastes** at ~5 KB each.
+
+<!-- TODO: Add Cloudflare deploy page screenshot -->
 
 ## Local Development
 
@@ -52,8 +59,7 @@ bun install
 # Create env file (edit AUTH_KEY at minimum)
 cp .env.example .env
 
-# Create and migrate the local database
-bun run db:create
+# Run local DB migration
 bun run db:migrate:local
 
 # Start the API server (terminal 1)
@@ -73,7 +79,7 @@ Open `http://localhost:5173` — the frontend proxies API requests to the dev se
 
 ## VPS / Self-Hosted
 
-Build the frontend and serve with Cloudflare Pages, or adapt the Bun dev server for production:
+Build the frontend and serve with Cloudflare Workers, or adapt the Bun dev server for production:
 
 ```bash
 bun install
@@ -93,8 +99,8 @@ All branding is configurable via `.env`. See [`.env.example`](.env.example) for 
 | `VITE_APP_NAME_ACCENT` | `bin` | Colored portion of navbar logo text |
 | `VITE_APP_DESCRIPTION` | *A simple, private-first…* | Meta description |
 | `VITE_FAVICON_URL` | `/favicon.svg` | Favicon path or URL |
-| `VITE_PWA_ICON_192` | `/icon-192.png` | PWA icon 192×192 |
-| `VITE_PWA_ICON_512` | `/icon-512.png` | PWA icon 512×512 |
+| `VITE_PWA_ICON_192` | `/icon-192.png` | PWA icon 192x192 |
+| `VITE_PWA_ICON_512` | `/icon-512.png` | PWA icon 512x512 |
 | `VITE_PWA_ICON_MASKABLE` | `/icon-maskable-512.png` | Maskable PWA icon |
 | `VITE_APPLE_TOUCH_ICON` | `/icon-192.png` | iOS home screen icon |
 | `AUTH_KEY` | *(required)* | Login passphrase (backend only) |
@@ -106,7 +112,7 @@ All branding is configurable via `.env`. See [`.env.example`](.env.example) for 
 | Layer | Tech |
 |-------|------|
 | Frontend | React 19, Vite, TypeScript, Tailwind CSS |
-| Backend | Cloudflare Pages Functions (prod) / Bun (dev) |
+| Backend | Cloudflare Workers (prod) / Bun (dev) |
 | Database | Cloudflare D1 (SQLite) |
 | Syntax highlighting | Shiki |
 | Icons | Lucide React |

@@ -7,13 +7,8 @@ bun install
 
 # 2. Setup Database
 Write-Host "🗄️ Setting up Local D1 Database..." -ForegroundColor Yellow
-$dbExists = bunx wrangler d1 info pastebin-db --local 2>$null
-if (-not $dbExists) {
-    Write-Host "Creating database..."
-    bunx wrangler d1 create pastebin-db
-}
 Write-Host "Applying migrations..."
-bunx wrangler d1 execute pastebin-db --local --file=schema.sql
+bun run db:migrate:local
 
 # 3. Build Frontend
 Write-Host "🏗️ Building Frontend..." -ForegroundColor Yellow
