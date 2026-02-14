@@ -71,32 +71,27 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
             className="group cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 border-border/60 h-full flex flex-col"
             onClick={() => isAuthenticated && navigate(`/edit/${paste.slug}`)}
         >
-            <CardContent className="p-4 gap-3 flex-1 flex flex-col">
-                {/* Header */}
-                <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-sm truncate text-foreground">
-                            {paste.title || paste.slug}
-                        </h3>
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                            <Badge variant="default" className="text-[11px] px-2 py-0">
-                                {getLanguageLabel(paste.language)}
-                            </Badge>
-                            <Badge
-                                variant={paste.visibility === 'public' ? 'secondary' : 'outline'}
-                                className="text-[11px] px-2 py-0"
-                            >
-                                {paste.visibility === 'public' ? 'public' : 'private'}
-                            </Badge>
-                        </div>
-                    </div>
-
+            <CardContent className="p-3 gap-2 flex-1 flex flex-col">
+                {/* Header: title + badges + menu all in one row */}
+                <div className="flex items-center gap-1.5">
+                    <h3 className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
+                        {paste.title || paste.slug}
+                    </h3>
+                    <Badge variant="default" className="text-[10px] px-1.5 py-0 shrink-0">
+                        {getLanguageLabel(paste.language)}
+                    </Badge>
+                    <Badge
+                        variant={paste.visibility === 'public' ? 'secondary' : 'outline'}
+                        className="text-[10px] px-1.5 py-0 shrink-0"
+                    >
+                        {paste.visibility === 'public' ? 'public' : 'private'}
+                    </Badge>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
                             >
                                 <MoreVertical className="h-3.5 w-3.5" />
                             </Button>
@@ -134,12 +129,12 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                 <CodePreview code={rawContent} language={paste.language} />
 
                 {/* Footer */}
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-auto pt-2">
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-auto">
                     <span className="flex items-center gap-1">
                         <Clock className="h-3 w-3 text-primary/60" />
                         {timeAgo(paste.created_at)}
                     </span>
-                    <span className="font-mono opacity-60">{paste.slug}</span>
+                    <span className="font-mono opacity-60 truncate ml-2">{paste.slug}</span>
                 </div>
             </CardContent>
         </Card>

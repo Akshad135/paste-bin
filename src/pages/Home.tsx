@@ -55,39 +55,17 @@ export function Home() {
     };
 
     return (
-        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold tracking-tight">
-                        {isAuthenticated ? 'Your Pastes' : 'Public Pastes'}
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        {isAuthenticated ? 'All your saved snippets' : 'Browse public snippets'}
-                    </p>
-                </div>
-                {isAuthenticated && (
-                    <Button onClick={() => navigate('/new')}>
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        New Paste
-                    </Button>
-                )}
-            </div>
-
+        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4">
             {/* Content */}
             {loading && pastes.length === 0 ? (
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="rounded-lg border border-border/60 p-4 space-y-3">
+                <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                        <div key={i} className="rounded-lg border border-border/60 p-3 space-y-2">
                             <div className="flex items-center justify-between">
                                 <Skeleton className="h-4 w-32" />
-                                <Skeleton className="h-6 w-6 rounded" />
+                                <Skeleton className="h-5 w-5 rounded" />
                             </div>
-                            <div className="flex gap-1.5">
-                                <Skeleton className="h-5 w-16 rounded-full" />
-                                <Skeleton className="h-5 w-14 rounded-full" />
-                            </div>
-                            <Skeleton className="h-24 w-full rounded-md" />
+                            <Skeleton className="h-20 w-full rounded-md" />
                             <div className="flex justify-between">
                                 <Skeleton className="h-3 w-16" />
                                 <Skeleton className="h-3 w-20" />
@@ -129,7 +107,10 @@ export function Home() {
                 </div>
             ) : (
                 <>
-                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                    <div
+                        className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
+                        style={{ gridAutoRows: 'calc((100vh - 7rem) / 3)' }}
+                    >
                         {pastes.map((paste) => (
                             <PasteCard
                                 key={paste.id}

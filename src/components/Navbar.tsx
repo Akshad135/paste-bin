@@ -54,7 +54,7 @@ export function Navbar() {
 
     return (
         <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-lg">
-            <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
+            <div className="mx-auto flex h-14 max-w-[90rem] items-center justify-between px-4 sm:px-6">
                 {/* Logo */}
                 <button
                     onClick={() => navigate('/')}

@@ -71,7 +71,7 @@ export function CodePreview({ code, language, maxLines = 4, className = '' }: Co
         // Fallback: plain pre/code while shiki loads
         return (
             <pre
-                className={`text-xs font-mono leading-relaxed rounded-md p-3 overflow-hidden max-h-20 bg-black/5 dark:bg-white/[0.06] text-foreground/70 border border-border/40 ${className}`}
+                className={`text-xs font-mono leading-relaxed rounded-md p-3 overflow-hidden flex-1 bg-black/5 dark:bg-white/[0.06] text-foreground/70 border border-border/40 ${className}`}
             >
                 <code>{displayCode}</code>
             </pre>
@@ -80,7 +80,7 @@ export function CodePreview({ code, language, maxLines = 4, className = '' }: Co
 
     return (
         <div
-            className={`code-preview-card overflow-hidden max-h-20 rounded-md border border-border/40 ${className}`}
+            className={`code-preview-card overflow-hidden flex-1 rounded-md border border-border/40 ${className}`}
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );

@@ -14,16 +14,13 @@ function App() {
         <AuthProvider>
           <div className="min-h-screen flex flex-col">
             <Navbar />
-            <main className="flex-1 pb-12">
+            <main className="flex-1">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/new" element={<NewPaste />} />
                 <Route path="/edit/:slug" element={<EditPaste />} />
               </Routes>
             </main>
-            <footer className="border-t border-border/40 py-5 text-center text-xs text-muted-foreground">
-              paste<span className="text-primary font-medium">bin</span> — private-first code sharing
-            </footer>
           </div>
           <Toaster richColors position="bottom-right" />
         </AuthProvider>
