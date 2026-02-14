@@ -62,8 +62,8 @@
     /* #45475a Surface1 */
     --muted-foreground: 239 12% 66%;
     /* #a6adc8 Subtext0 */
-    --accent: 267 83% 81%;
-    --accent-foreground: 240 21% 15%;
+    --accent: 240 21% 22%;
+    --accent-foreground: 227 70% 88%;
     --destructive: 343 81% 75%;
     /* #f38ba8 Red */
     --destructive-foreground: 240 21% 15%;
@@ -117,31 +117,31 @@
 
   /* Dracula */
   [data-palette="b"].dark {
-    --background: 231 15% 18%;
-    /* #282a36 */
+    --background: 231 15% 15%;
+    /* Darker Dracula bg */
     --foreground: 60 30% 96%;
     /* #f8f8f2 */
-    --card: 231 14% 31%;
-    /* #44475a */
+    --card: 231 15% 23%;
+    /* Deeper cards */
     --card-foreground: 60 30% 96%;
-    --popover: 231 14% 31%;
+    --popover: 231 15% 23%;
     --popover-foreground: 60 30% 96%;
     --primary: 265 89% 78%;
     /* #bd93f9 Purple */
-    --primary-foreground: 231 15% 18%;
+    --primary-foreground: 231 15% 15%;
     --secondary: 326 100% 74%;
     /* #ff79c6 Pink */
-    --secondary-foreground: 231 15% 18%;
-    --muted: 231 14% 31%;
+    --secondary-foreground: 231 15% 15%;
+    --muted: 231 15% 20%;
     --muted-foreground: 225 27% 51%;
     /* #6272a4 Comment */
-    --accent: 265 89% 78%;
-    --accent-foreground: 231 15% 18%;
+    --accent: 231 15% 20%;
+    --accent-foreground: 60 30% 96%;
     --destructive: 0 100% 67%;
     /* #ff5555 Red */
     --destructive-foreground: 60 30% 96%;
-    --border: 231 14% 31%;
-    --input: 231 14% 31%;
+    --border: 231 15% 26%;
+    --input: 231 15% 26%;
     --ring: 265 89% 78%;
 
     --palette-accent: 265 89% 78%;
@@ -208,8 +208,8 @@
     --muted: 220 16% 22%;
     --muted-foreground: 218 11% 65%;
     /* #d8dee9 */
-    --accent: 193 43% 67%;
-    --accent-foreground: 220 16% 14%;
+    --accent: 220 16% 26%;
+    --accent-foreground: 210 29% 94%;
     --destructive: 354 42% 56%;
     /* #bf616a Red */
     --destructive-foreground: 210 29% 94%;
@@ -281,9 +281,9 @@
     --muted: 229 24% 19%;
     --muted-foreground: 227 18% 53%;
     /* #565f89 */
-    --accent: 186 100% 75%;
-    /* #7dcfff Cyan */
-    --accent-foreground: 237 18% 13%;
+    --accent: 229 24% 24%;
+    /* Subtle surface tint */
+    --accent-foreground: 229 34% 86%;
     --destructive: 338 86% 72%;
     /* #f7768e Red */
     --destructive-foreground: 0 0% 100%;
