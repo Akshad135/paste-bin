@@ -26,7 +26,7 @@ interface CodePreviewProps {
     className?: string;
 }
 
-export function CodePreview({ code, language, maxLines = 6, className = '' }: CodePreviewProps) {
+export function CodePreview({ code, language, maxLines = 4, className = '' }: CodePreviewProps) {
     const [html, setHtml] = useState<string>('');
 
     const lines = code.split('\n').slice(0, maxLines);
@@ -71,7 +71,7 @@ export function CodePreview({ code, language, maxLines = 6, className = '' }: Co
         // Fallback: plain pre/code while shiki loads
         return (
             <pre
-                className={`text-xs font-mono leading-relaxed rounded-md p-3 overflow-hidden max-h-36 bg-black/5 dark:bg-white/[0.06] text-foreground/70 border border-border/40 ${className}`}
+                className={`text-xs font-mono leading-relaxed rounded-md p-3 overflow-hidden max-h-20 bg-black/5 dark:bg-white/[0.06] text-foreground/70 border border-border/40 ${className}`}
             >
                 <code>{displayCode}</code>
             </pre>
@@ -80,7 +80,7 @@ export function CodePreview({ code, language, maxLines = 6, className = '' }: Co
 
     return (
         <div
-            className={`code-preview-card overflow-hidden max-h-36 rounded-md border border-border/40 ${className}`}
+            className={`code-preview-card overflow-hidden max-h-20 rounded-md border border-border/40 ${className}`}
             dangerouslySetInnerHTML={{ __html: html }}
         />
     );
