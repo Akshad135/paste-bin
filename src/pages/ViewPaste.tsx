@@ -7,15 +7,14 @@ import { getLanguageLabel, timeAgo } from '@/lib/constants';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-    ArrowLeft,
-    Copy,
-    Link2,
-    Pencil,
-    Download,
-    Clock,
-    AlertCircle,
-} from 'lucide-react';
+import { CopyIcon } from '@/components/ui/animated-copy';
+import { LinkIcon } from '@/components/ui/animated-link';
+import { FileTextIcon } from '@/components/ui/animated-file-text';
+import { DownloadIcon } from '@/components/ui/animated-download';
+import { SquarePenIcon } from '@/components/ui/animated-square-pen';
+import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
+import { ClockIcon } from '@/components/ui/animated-clock';
+import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
 import { toast } from 'sonner';
 
 // Map language values to shiki identifiers
@@ -34,6 +33,21 @@ const LANG_MAP: Record<string, string> = {
     svelte: 'svelte',
     astro: 'astro',
     nginx: 'nginx',
+};
+
+// Map language values to file extensions
+const EXT_MAP: Record<string, string> = {
+    plaintext: 'md', javascript: 'js', typescript: 'ts', python: 'py',
+    rust: 'rs', go: 'go', java: 'java', c: 'c', cpp: 'cpp', csharp: 'cs',
+    ruby: 'rb', php: 'php', swift: 'swift', kotlin: 'kt', scala: 'scala',
+    r: 'r', perl: 'pl', lua: 'lua', shellscript: 'sh', powershell: 'ps1',
+    sql: 'sql', html: 'html', css: 'css', scss: 'scss', less: 'less',
+    json: 'json', yaml: 'yaml', toml: 'toml', xml: 'xml', markdown: 'md',
+    latex: 'tex', dockerfile: 'Dockerfile', makefile: 'Makefile',
+    graphql: 'graphql', proto: 'proto', terraform: 'tf',
+    jsx: 'jsx', tsx: 'tsx', vue: 'vue', svelte: 'svelte', astro: 'astro',
+    nginx: 'conf', zig: 'zig', elixir: 'ex', clojure: 'clj',
+    haskell: 'hs', ocaml: 'ml', dart: 'dart',
 };
 
 export function ViewPaste() {
@@ -107,7 +121,7 @@ export function ViewPaste() {
 
     const downloadPaste = () => {
         if (!paste) return;
-        const ext = paste.language === 'plaintext' ? 'txt' : paste.language;
+        const ext = EXT_MAP[paste.language] || paste.language;
         const filename = `${paste.title || paste.slug}.${ext}`;
         const blob = new Blob([paste.content], { type: 'text/plain' });
         const url = URL.createObjectURL(blob);
@@ -117,6 +131,13 @@ export function ViewPaste() {
         a.click();
         URL.revokeObjectURL(url);
         toast.success('Download started!');
+    };
+
+    const viewRaw = () => {
+        if (!paste) return;
+        const blob = new Blob([paste.content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
     };
 
     // Loading state
@@ -143,14 +164,14 @@ export function ViewPaste() {
             <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-6">
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                     <div className="rounded-full bg-destructive/10 p-4 mb-4">
-                        <AlertCircle className="h-8 w-8 text-destructive" />
+                        <BadgeAlertIcon size={32} className="text-destructive" />
                     </div>
                     <h2 className="text-lg font-semibold">Paste not found</h2>
                     <p className="text-sm text-muted-foreground mt-1">
                         {error || 'This paste may have been deleted or is private.'}
                     </p>
                     <Button variant="outline" className="mt-4" onClick={() => navigate('/')}>
-                        <ArrowLeft className="h-4 w-4 mr-1.5" />
+                        <ArrowLeftIcon size={16} className="mr-1.5" />
                         Back to Home
                     </Button>
                 </div>
@@ -171,7 +192,7 @@ export function ViewPaste() {
                     className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => navigate('/')}
                 >
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeftIcon size={18} />
                 </Button>
 
                 {/* Title + metadata */}
@@ -193,7 +214,7 @@ export function ViewPaste() {
                         {paste.visibility}
                     </Badge>
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
+                        <ClockIcon size={12} />
                         {timeAgo(paste.created_at)}
                     </span>
                     <span className="text-xs text-muted-foreground font-mono">
@@ -213,7 +234,7 @@ export function ViewPaste() {
                         onClick={copyContent}
                         title="Copy content"
                     >
-                        <Copy className="h-4 w-4" />
+                        <CopyIcon size={16} />
                     </Button>
                     <Button
                         variant="ghost"
@@ -222,7 +243,16 @@ export function ViewPaste() {
                         onClick={shareLink}
                         title="Copy share link"
                     >
-                        <Link2 className="h-4 w-4" />
+                        <LinkIcon size={16} />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={viewRaw}
+                        title="View raw"
+                    >
+                        <FileTextIcon size={16} />
                     </Button>
                     <Button
                         variant="ghost"
@@ -231,7 +261,7 @@ export function ViewPaste() {
                         onClick={downloadPaste}
                         title="Download"
                     >
-                        <Download className="h-4 w-4" />
+                        <DownloadIcon size={16} />
                     </Button>
                     {isAuthenticated && (
                         <Button
@@ -241,7 +271,7 @@ export function ViewPaste() {
                             onClick={() => navigate(`/edit/${paste.slug}`)}
                             title="Edit"
                         >
-                            <Pencil className="h-4 w-4" />
+                            <SquarePenIcon size={16} />
                         </Button>
                     )}
                 </div>
@@ -259,7 +289,7 @@ export function ViewPaste() {
                     {paste.visibility}
                 </Badge>
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Clock className="h-2.5 w-2.5" />
+                    <ClockIcon size={10} />
                     {timeAgo(paste.created_at)}
                 </span>
                 <span className="text-[10px] text-muted-foreground font-mono">
@@ -270,9 +300,9 @@ export function ViewPaste() {
             {/* Code view */}
             <div className="flex-1 min-h-0 rounded-lg border border-border/60 overflow-auto code-view-full">
                 {highlightedHtml ? (
-                    <div dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
+                    <div className="min-h-full" dangerouslySetInnerHTML={{ __html: highlightedHtml }} />
                 ) : (
-                    <pre className="text-sm font-mono leading-relaxed p-4 text-foreground/80">
+                    <pre className="text-sm font-mono leading-relaxed p-5 text-foreground/80 min-h-full">
                         <code>{paste.content}</code>
                     </pre>
                 )}

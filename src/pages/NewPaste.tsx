@@ -10,7 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Loader2, Globe, Lock } from 'lucide-react';
+import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
+import { EarthIcon } from '@/components/ui/animated-earth';
+import { LockIcon } from '@/components/ui/animated-lock';
+import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
 import { toast } from 'sonner';
 
 export function NewPaste() {
@@ -69,7 +72,7 @@ export function NewPaste() {
         <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
             <div className="flex items-center gap-3 mb-6">
                 <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
-                    <ArrowLeft className="h-4 w-4" />
+                    <ArrowLeftIcon size={16} />
                 </Button>
                 <h1 className="text-2xl font-bold tracking-tight">New Paste</h1>
             </div>
@@ -127,14 +130,14 @@ export function NewPaste() {
                                 />
                                 <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                                     {isPublic ? (
-                                        <><Globe className="h-3.5 w-3.5 text-emerald-400" /> Public — visible to everyone</>
+                                        <><EarthIcon size={14} className="text-emerald-400" /> Public — visible to everyone</>
                                     ) : (
-                                        <><Lock className="h-3.5 w-3.5 text-amber-400" /> Private — only you can see this</>
+                                        <><LockIcon size={14} className="text-amber-400" /> Private — only you can see this</>
                                     )}
                                 </span>
                             </div>
                             <Button type="submit" disabled={loading}>
-                                {loading && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                                {loading && <LoaderPinwheelIcon size={16} className="mr-1.5 animate-spin" />}
                                 Create Paste
                             </Button>
                         </div>

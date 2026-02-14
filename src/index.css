@@ -320,11 +320,22 @@
 }
 
 /* ─── Full-page code view ─── */
+.code-view-full {
+  display: flex;
+  flex-direction: column;
+}
+
+.code-view-full>div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
 .code-view-full .shiki {
   padding: 1.25rem;
   font-size: 0.875rem;
   line-height: 1.7;
-  min-height: 100%;
+  flex: 1;
   background: rgba(0, 0, 0, 0.03) !important;
 }
 

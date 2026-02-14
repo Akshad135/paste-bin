@@ -20,7 +20,12 @@ import {
     DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
-import { ArrowLeft, Loader2, Globe, Lock, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
+import { EarthIcon } from '@/components/ui/animated-earth';
+import { LockIcon } from '@/components/ui/animated-lock';
+import { DeleteIcon } from '@/components/ui/animated-delete';
+import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
+import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
 import { toast } from 'sonner';
 
 export function EditPaste() {
@@ -131,7 +136,7 @@ export function EditPaste() {
         return (
             <div className="mx-auto max-w-3xl px-4 sm:px-6 py-20">
                 <div className="flex flex-col items-center text-center">
-                    <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                    <BadgeAlertIcon size={48} className="text-destructive mb-4" />
                     <h2 className="text-lg font-semibold">{error || 'Paste not found'}</h2>
                     <Button variant="outline" className="mt-4" onClick={() => navigate('/')}>
                         Go Home
@@ -146,7 +151,7 @@ export function EditPaste() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeftIcon size={16} />
                     </Button>
                     <h1 className="text-2xl font-bold tracking-tight">Edit Paste</h1>
                 </div>
@@ -156,7 +161,7 @@ export function EditPaste() {
                     onClick={() => setDeleteOpen(true)}
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                 >
-                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    <DeleteIcon size={16} className="mr-1.5" />
                     Delete
                 </Button>
             </div>
@@ -214,9 +219,9 @@ export function EditPaste() {
                                 />
                                 <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                                     {isPublic ? (
-                                        <><Globe className="h-3.5 w-3.5 text-emerald-400" /> Public</>
+                                        <><EarthIcon size={14} className="text-emerald-400" /> Public</>
                                     ) : (
-                                        <><Lock className="h-3.5 w-3.5 text-amber-400" /> Private</>
+                                        <><LockIcon size={14} className="text-amber-400" /> Private</>
                                     )}
                                 </span>
                             </div>
@@ -225,7 +230,7 @@ export function EditPaste() {
                                     Cancel
                                 </Button>
                                 <Button type="submit" disabled={saving}>
-                                    {saving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                                    {saving && <LoaderPinwheelIcon size={16} className="mr-1.5 animate-spin" />}
                                     Save Changes
                                 </Button>
                             </div>

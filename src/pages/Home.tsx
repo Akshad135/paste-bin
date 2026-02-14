@@ -5,7 +5,10 @@ import { useAuth } from '@/lib/auth';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, RefreshCw, FileCode2, AlertCircle } from 'lucide-react';
+import { FileCode2 } from 'lucide-react';
+import { PlusIcon } from '@/components/ui/animated-plus';
+import { RefreshCWIcon } from '@/components/ui/animated-refresh-cw';
+import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
 
 export function Home() {
     const [pastes, setPastes] = useState<Paste[]>([]);
@@ -76,14 +79,14 @@ export function Home() {
             ) : error ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                     <div className="rounded-full bg-destructive/10 p-4 mb-4">
-                        <AlertCircle className="h-8 w-8 text-destructive" />
+                        <BadgeAlertIcon size={32} className="text-destructive" />
                     </div>
                     <h2 className="text-lg font-semibold">Connection Error</h2>
                     <p className="text-sm text-muted-foreground mt-1 max-w-sm">
                         {error}. Make sure the API server is running.
                     </p>
                     <Button variant="outline" className="mt-4" onClick={loadPastes}>
-                        <RefreshCw className="h-4 w-4 mr-1.5" />
+                        <RefreshCWIcon size={16} className="mr-1.5" />
                         Retry
                     </Button>
                 </div>
@@ -100,7 +103,7 @@ export function Home() {
                     </p>
                     {isAuthenticated && (
                         <Button className="mt-4" onClick={() => navigate('/new')}>
-                            <Plus className="h-4 w-4 mr-1.5" />
+                            <PlusIcon size={16} className="mr-1.5" />
                             Create a Paste
                         </Button>
                     )}
@@ -130,7 +133,7 @@ export function Home() {
                                 onClick={() => setPage((p) => p + 1)}
                             >
                                 {loading ? (
-                                    <RefreshCw className="h-4 w-4 mr-1.5 animate-spin" />
+                                    <RefreshCWIcon size={16} className="mr-1.5 animate-spin" />
                                 ) : null}
                                 Load More
                             </Button>
