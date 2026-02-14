@@ -178,7 +178,7 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                             <ClockIcon size={12} className="text-primary/60" />
                             {timeAgo(paste.created_at)}
                         </span>
-                        <span className="font-mono opacity-60 truncate ml-2">{paste.slug}</span>
+                        <span className="font-mono truncate ml-2">{paste.slug}</span>
                     </div>
                 </CardContent>
             </Card>

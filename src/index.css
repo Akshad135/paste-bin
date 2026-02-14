@@ -5,242 +5,363 @@
 @layer base {
 
   /* ══════════════════════════════════════════════
-     PALETTE A — "Midnight Purple + Mint"
-     Dark: #16161a  Accent: #7f5af0  Tertiary: #2cb67d
+     PALETTE A — "Purple Mint"
+     Dark: #16161a  Accent: #7f5af0  Secondary: #72757e  Tertiary: #2cb67d
      Light: #f2f7f5  Accent: #faae2b  Tertiary: #fa5246
      ══════════════════════════════════════════════ */
 
+  /* Catppuccin Latte */
+  /* Catppuccin Latte */
   [data-palette="a"] {
-    --background: 80 14% 95%;
-    --foreground: 166 100% 15%;
-    --card: 80 14% 91%;
-    --card-foreground: 166 100% 15%;
-    --popover: 80 14% 91%;
-    --popover-foreground: 166 100% 15%;
-    --primary: 39 95% 57%;
-    --primary-foreground: 166 100% 15%;
-    --secondary: 80 10% 88%;
-    --secondary-foreground: 166 34% 32%;
-    --muted: 80 8% 88%;
-    --muted-foreground: 166 12% 40%;
-    --accent: 80 12% 85%;
-    --accent-foreground: 166 100% 15%;
-    --destructive: 4 86% 62%;
+    --background: 220 23% 95%;
+    --foreground: 226 27% 10%;
+    /* Darker Text */
+    --card: 0 0% 100%;
+    --card-foreground: 226 27% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 226 27% 10%;
+    --primary: 266 85% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 17 99% 52%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 220 21% 89%;
+    --muted-foreground: 224 14% 35%;
+    /* Darker Muted */
+    --accent: 266 85% 58%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 349 74% 56%;
     --destructive-foreground: 0 0% 100%;
-    --border: 80 8% 80%;
-    --input: 80 8% 80%;
-    --ring: 39 95% 57%;
+    --border: 224 16% 56%;
+    --input: 224 16% 56%;
+    --ring: 266 85% 58%;
     --radius: 0.625rem;
 
-    --palette-accent: 39 95% 57%;
-    --palette-secondary: 345 100% 83%;
-    --palette-tertiary: 4 96% 62%;
+    --palette-accent: 266 85% 58%;
+    --palette-secondary: 17 99% 52%;
+    --palette-tertiary: 174 44% 40%;
   }
 
+  /* Catppuccin Mocha */
   [data-palette="a"].dark {
-    --background: 240 7% 9%;
-    --foreground: 0 0% 100%;
-    --card: 240 5% 13%;
-    --card-foreground: 210 9% 73%;
-    --popover: 240 5% 13%;
-    --popover-foreground: 210 9% 73%;
-    --primary: 259 78% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 235 5% 20%;
-    --secondary-foreground: 210 9% 73%;
-    --muted: 235 4% 17%;
-    --muted-foreground: 230 6% 50%;
-    --accent: 235 5% 20%;
-    --accent-foreground: 210 9% 73%;
-    --destructive: 0 62% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 235 5% 22%;
-    --input: 235 5% 22%;
-    --ring: 259 78% 65%;
+    --background: 240 21% 15%;
+    /* #1e1e2e */
+    --foreground: 227 70% 88%;
+    /* #cdd6f4 */
+    --card: 237 16% 23%;
+    /* #313244 */
+    --card-foreground: 227 70% 88%;
+    --popover: 237 16% 23%;
+    --popover-foreground: 227 70% 88%;
+    --primary: 267 83% 81%;
+    /* #cba6f7 Mauve */
+    --primary-foreground: 240 21% 15%;
+    --secondary: 23 88% 75%;
+    /* #fab387 Peach */
+    --secondary-foreground: 240 21% 15%;
+    --muted: 238 12% 28%;
+    /* #45475a Surface1 */
+    --muted-foreground: 239 12% 66%;
+    /* #a6adc8 Subtext0 */
+    --accent: 267 83% 81%;
+    --accent-foreground: 240 21% 15%;
+    --destructive: 343 81% 75%;
+    /* #f38ba8 Red */
+    --destructive-foreground: 240 21% 15%;
+    --border: 237 16% 23%;
+    --input: 237 16% 23%;
+    --ring: 267 83% 81%;
 
-    --palette-accent: 259 78% 65%;
-    --palette-secondary: 230 5% 50%;
-    --palette-tertiary: 157 62% 45%;
+    --palette-accent: 267 83% 81%;
+    --palette-secondary: 23 88% 75%;
+    --palette-tertiary: 174 75% 66%;
+    /* #94e2d5 Teal */
   }
 
 
   /* ══════════════════════════════════════════════
-     PALETTE B — "Dark Warm + Orange Fire"
+     PALETTE B — "Orange Fire"
      Dark: #0f0e17  Accent: #ff8906  Secondary: #f25f4c  Tertiary: #e53170
      Light: #fffffe  Accent: #ffd803  Secondary: #e3f6f5  Tertiary: #bae8e8
      ══════════════════════════════════════════════ */
 
+  /* Dracula Light (Inverted/High Contrast) */
+  /* Dracula Light */
   [data-palette="b"] {
-    --background: 0 0% 100%;
-    --foreground: 240 29% 20%;
-    --card: 0 0% 97%;
-    --card-foreground: 240 29% 20%;
-    --popover: 0 0% 97%;
-    --popover-foreground: 240 29% 20%;
-    --primary: 48 100% 49%;
-    --primary-foreground: 240 29% 20%;
-    --secondary: 178 52% 93%;
-    --secondary-foreground: 240 29% 25%;
-    --muted: 180 30% 94%;
-    --muted-foreground: 237 16% 37%;
-    --accent: 178 52% 93%;
-    --accent-foreground: 240 29% 20%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 180 20% 88%;
-    --input: 180 20% 88%;
-    --ring: 48 100% 49%;
+    --background: 60 30% 96%;
+    --foreground: 231 15% 10%;
+    /* Darker Text */
+    --card: 0 0% 100%;
+    --card-foreground: 231 15% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 231 15% 10%;
+    --primary: 265 89% 78%;
+    --primary-foreground: 231 15% 18%;
+    --secondary: 326 100% 74%;
+    --secondary-foreground: 231 15% 18%;
+    --muted: 231 15% 85%;
+    --muted-foreground: 231 15% 35%;
+    /* Darker Muted */
+    --accent: 265 89% 78%;
+    --accent-foreground: 231 15% 18%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 30% 96%;
+    --border: 231 15% 80%;
+    --input: 231 15% 80%;
+    --ring: 265 89% 78%;
     --radius: 0.625rem;
 
-    --palette-accent: 48 100% 49%;
-    --palette-secondary: 178 52% 88%;
-    --palette-tertiary: 178 58% 80%;
+    --palette-accent: 265 89% 78%;
+    --palette-secondary: 326 100% 74%;
+    --palette-tertiary: 170 70% 65%;
   }
 
+  /* Dracula */
   [data-palette="b"].dark {
-    --background: 252 28% 7%;
-    --foreground: 0 0% 100%;
-    --card: 252 20% 11%;
-    --card-foreground: 234 13% 70%;
-    --popover: 252 20% 11%;
-    --popover-foreground: 234 13% 70%;
-    --primary: 32 100% 51%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 252 14% 18%;
-    --secondary-foreground: 234 13% 70%;
-    --muted: 252 10% 15%;
-    --muted-foreground: 234 10% 50%;
-    --accent: 252 14% 18%;
-    --accent-foreground: 234 13% 70%;
-    --destructive: 340 79% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 252 10% 20%;
-    --input: 252 10% 20%;
-    --ring: 32 100% 51%;
+    --background: 231 15% 18%;
+    /* #282a36 */
+    --foreground: 60 30% 96%;
+    /* #f8f8f2 */
+    --card: 231 14% 31%;
+    /* #44475a */
+    --card-foreground: 60 30% 96%;
+    --popover: 231 14% 31%;
+    --popover-foreground: 60 30% 96%;
+    --primary: 265 89% 78%;
+    /* #bd93f9 Purple */
+    --primary-foreground: 231 15% 18%;
+    --secondary: 326 100% 74%;
+    /* #ff79c6 Pink */
+    --secondary-foreground: 231 15% 18%;
+    --muted: 231 14% 31%;
+    --muted-foreground: 225 27% 51%;
+    /* #6272a4 Comment */
+    --accent: 265 89% 78%;
+    --accent-foreground: 231 15% 18%;
+    --destructive: 0 100% 67%;
+    /* #ff5555 Red */
+    --destructive-foreground: 60 30% 96%;
+    --border: 231 14% 31%;
+    --input: 231 14% 31%;
+    --ring: 265 89% 78%;
 
-    --palette-accent: 32 100% 51%;
-    --palette-secondary: 8 87% 62%;
-    --palette-tertiary: 340 79% 55%;
+    --palette-accent: 265 89% 78%;
+    --palette-secondary: 326 100% 74%;
+    --palette-tertiary: 170 70% 65%;
+    /* #50fa7b Green */
   }
 
 
   /* ══════════════════════════════════════════════
-     PALETTE C — "Cream + Navy + Pink"
-     Dark: #16161a  Accent: #f582ae  Secondary: #f3d2c1  Tertiary: #8bd3dd
+     PALETTE C — "Teal Gold"
+     Dark: #004643  Accent: #f9bc60  Secondary: #abd1c6  Tertiary: #e16162
      Light: #fef6e4  Accent: #f582ae  Secondary: #f3d2c1  Tertiary: #8bd3dd
      ══════════════════════════════════════════════ */
 
+  /* Nord Light (Snow Storm) */
+  /* Nord Light */
   [data-palette="c"] {
-    --background: 41 90% 95%;
-    --foreground: 217 100% 17%;
-    --card: 41 65% 90%;
-    --card-foreground: 217 100% 17%;
-    --popover: 41 65% 90%;
-    --popover-foreground: 217 100% 17%;
-    --primary: 338 83% 73%;
-    --primary-foreground: 217 100% 17%;
-    --secondary: 22 62% 86%;
-    --secondary-foreground: 217 60% 25%;
-    --muted: 22 40% 88%;
-    --muted-foreground: 224 50% 35%;
-    --accent: 22 62% 86%;
-    --accent-foreground: 217 100% 17%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 22 30% 82%;
-    --input: 22 30% 82%;
-    --ring: 338 83% 73%;
+    --background: 210 29% 94%;
+    --foreground: 220 16% 10%;
+    /* Darker Text */
+    --card: 0 0% 100%;
+    --card-foreground: 220 16% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 16% 10%;
+    --primary: 213 32% 52%;
+    --primary-foreground: 210 29% 94%;
+    --secondary: 14 51% 63%;
+    --secondary-foreground: 220 16% 22%;
+    --muted: 218 11% 65%;
+    --muted-foreground: 220 16% 30%;
+    /* Darker Muted */
+    --accent: 213 32% 52%;
+    --accent-foreground: 210 29% 94%;
+    --destructive: 354 42% 56%;
+    --destructive-foreground: 210 29% 94%;
+    --border: 218 11% 65%;
+    --input: 218 11% 65%;
+    --ring: 213 32% 52%;
     --radius: 0.625rem;
 
-    --palette-accent: 338 83% 73%;
-    --palette-secondary: 22 62% 86%;
-    --palette-tertiary: 189 58% 70%;
+    --palette-accent: 213 32% 52%;
+    --palette-secondary: 14 51% 63%;
+    --palette-tertiary: 92 28% 65%;
   }
 
+  /* Nord (Darker) */
   [data-palette="c"].dark {
-    --background: 240 7% 9%;
-    --foreground: 0 0% 100%;
-    --card: 240 5% 13%;
-    --card-foreground: 210 10% 82%;
-    --popover: 240 5% 13%;
-    --popover-foreground: 210 10% 82%;
-    --primary: 338 83% 73%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 18%;
-    --secondary-foreground: 210 10% 78%;
-    --muted: 240 4% 15%;
-    --muted-foreground: 210 8% 48%;
-    --accent: 240 5% 18%;
-    --accent-foreground: 210 10% 82%;
-    --destructive: 0 62% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 240 5% 20%;
-    --input: 240 5% 20%;
-    --ring: 338 83% 73%;
+    --background: 220 16% 14%;
+    /* #1e222a (Custom darker Polar Night) */
+    --foreground: 210 29% 94%;
+    /* #eceff4 */
+    --card: 220 16% 22%;
+    /* #2e3440 */
+    --card-foreground: 210 29% 94%;
+    --popover: 220 16% 22%;
+    --popover-foreground: 210 29% 94%;
+    --primary: 193 43% 67%;
+    /* #88c0d0 Frost */
+    --primary-foreground: 220 16% 14%;
+    --secondary: 14 51% 63%;
+    /* #d08770 Orange */
+    --secondary-foreground: 220 16% 14%;
+    --muted: 220 16% 22%;
+    --muted-foreground: 218 11% 65%;
+    /* #d8dee9 */
+    --accent: 193 43% 67%;
+    --accent-foreground: 220 16% 14%;
+    --destructive: 354 42% 56%;
+    /* #bf616a Red */
+    --destructive-foreground: 210 29% 94%;
+    --border: 220 16% 22%;
+    --input: 220 16% 22%;
+    --ring: 193 43% 67%;
 
-    --palette-accent: 338 83% 73%;
-    --palette-secondary: 22 62% 80%;
-    --palette-tertiary: 189 58% 70%;
+    --palette-accent: 193 43% 67%;
+    --palette-secondary: 14 51% 63%;
+    --palette-tertiary: 92 28% 65%;
+    /* #a3be8c Green */
   }
 
 
   /* ══════════════════════════════════════════════
-     PALETTE D — "Peach + Rose + Mint"
-     Dark: #33272a  Accent: #ff8ba7  Secondary: #ffc6c7  Tertiary: #c3f0ca
+     PALETTE D — "Warm Blush"
+     Dark: #55423d  Accent: #e78fb3  Secondary: #ffc0ad  Tertiary: #9656a1
      Light: #faeee7  Accent: #ff8ba7  Secondary: #ffc6c7  Tertiary: #c3f0ca
      ══════════════════════════════════════════════ */
 
+  /* Tokyo Night Day */
+  /* Tokyo Night Day */
   [data-palette="d"] {
-    --background: 22 46% 94%;
-    --foreground: 345 12% 18%;
-    --card: 22 36% 90%;
-    --card-foreground: 345 12% 18%;
-    --popover: 22 36% 90%;
-    --popover-foreground: 345 12% 18%;
-    --primary: 349 100% 77%;
-    --primary-foreground: 345 12% 18%;
-    --secondary: 359 100% 89%;
-    --secondary-foreground: 345 12% 25%;
-    --muted: 0 30% 90%;
-    --muted-foreground: 335 10% 38%;
-    --accent: 359 100% 89%;
-    --accent-foreground: 345 12% 18%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 18% 83%;
-    --input: 0 18% 83%;
-    --ring: 349 100% 77%;
+    --background: 228 17% 89%;
+    --foreground: 226 26% 10%;
+    /* Darker Text */
+    --card: 0 0% 100%;
+    --card-foreground: 226 26% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 226 26% 10%;
+    --primary: 274 53% 56%;
+    --primary-foreground: 228 17% 89%;
+    --secondary: 221 87% 72%;
+    --secondary-foreground: 228 17% 89%;
+    --muted: 224 23% 80%;
+    --muted-foreground: 226 26% 35%;
+    /* Darker Muted */
+    --accent: 274 53% 56%;
+    --accent-foreground: 228 17% 89%;
+    --destructive: 338 86% 72%;
+    --destructive-foreground: 228 17% 89%;
+    --border: 224 23% 80%;
+    --input: 224 23% 80%;
+    --ring: 274 53% 56%;
     --radius: 0.625rem;
 
-    --palette-accent: 349 100% 77%;
-    --palette-secondary: 359 100% 89%;
-    --palette-tertiary: 130 65% 84%;
+    --palette-accent: 274 53% 56%;
+    --palette-secondary: 221 87% 72%;
+    --palette-tertiary: 160 55% 72%;
   }
 
+  /* Tokyo Night */
   [data-palette="d"].dark {
-    --background: 345 12% 18%;
-    --foreground: 0 0% 100%;
-    --card: 345 10% 22%;
-    --card-foreground: 345 6% 75%;
-    --popover: 345 10% 22%;
-    --popover-foreground: 345 6% 75%;
-    --primary: 349 100% 77%;
-    --primary-foreground: 345 12% 18%;
-    --secondary: 345 8% 28%;
-    --secondary-foreground: 345 6% 75%;
-    --muted: 345 6% 25%;
-    --muted-foreground: 345 5% 50%;
-    --accent: 345 8% 28%;
-    --accent-foreground: 345 6% 75%;
-    --destructive: 0 62% 55%;
+    --background: 237 18% 13%;
+    /* #1a1b26 */
+    --foreground: 229 34% 86%;
+    /* #a9b1d6 (lightened slightly) */
+    --card: 229 24% 19%;
+    /* #24283b */
+    --card-foreground: 229 34% 86%;
+    --popover: 229 24% 19%;
+    --popover-foreground: 229 34% 86%;
+    --primary: 221 87% 72%;
+    /* #7aa2f7 Blue */
+    --primary-foreground: 237 18% 13%;
+    --secondary: 261 82% 79%;
+    /* #bb9af7 Purple */
+    --secondary-foreground: 237 18% 13%;
+    --muted: 229 24% 19%;
+    --muted-foreground: 227 18% 53%;
+    /* #565f89 */
+    --accent: 186 100% 75%;
+    /* #7dcfff Cyan */
+    --accent-foreground: 237 18% 13%;
+    --destructive: 338 86% 72%;
+    /* #f7768e Red */
     --destructive-foreground: 0 0% 100%;
-    --border: 345 6% 30%;
-    --input: 345 6% 30%;
-    --ring: 349 100% 77%;
+    --border: 229 24% 19%;
+    --input: 229 24% 19%;
+    --ring: 221 87% 72%;
 
-    --palette-accent: 349 100% 77%;
-    --palette-secondary: 359 80% 82%;
-    --palette-tertiary: 130 65% 75%;
+    --palette-accent: 221 87% 72%;
+    --palette-secondary: 261 82% 79%;
+    --palette-tertiary: 160 55% 72%;
+    /* #9ece6a Green */
+  }
+
+  /* ══════════════════════════════════════════════
+     PALETTE E — "Shadcn Black"
+     Dark: #000000 (Zinc 950/Black)
+     Light: #fafafa (Zinc 50/Off-White)
+     ══════════════════════════════════════════════ */
+
+  [data-palette="e"] {
+    --background: 0 0% 98%;
+    /* Zinc 50 */
+    --foreground: 0 0% 0%;
+    /* Pure Black */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 0%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 0%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 30%;
+    /* Darker Muted */
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    --radius: 0.5rem;
+
+    --palette-accent: 240 5.9% 10%;
+    --palette-secondary: 240 4.8% 95.9%;
+    --palette-tertiary: 240 3.8% 46.1%;
+  }
+
+  [data-palette="e"].dark {
+    --background: 0 0% 0%;
+    /* Pure Black */
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    /* Zinc 950 */
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 24 95% 53%;
+    /* Orange Tint */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    /* Subtle accent background */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 24 95% 53%;
+    /* Orange Ring */
+
+    --palette-accent: 24 95% 53%;
+    --palette-secondary: 240 3.7% 15.9%;
+    --palette-tertiary: 24 95% 53%;
   }
 }
 

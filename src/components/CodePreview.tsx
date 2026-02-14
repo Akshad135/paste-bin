@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { codeToHtml } from 'shiki';
+import { useTheme } from '@/components/ThemeProvider';
 
 // Map our language values to shiki language identifiers
 const LANG_MAP: Record<string, string> = {
@@ -27,6 +28,7 @@ interface CodePreviewProps {
 }
 
 export function CodePreview({ code, language, maxLines = 4, className = '' }: CodePreviewProps) {
+    const { mode } = useTheme();
     const [html, setHtml] = useState<string>('');
 
     const lines = code.split('\n').slice(0, maxLines);
@@ -41,7 +43,7 @@ export function CodePreview({ code, language, maxLines = 4, className = '' }: Co
 
         codeToHtml(displayCode, {
             lang,
-            theme: 'github-dark-default',
+            theme: mode === 'dark' ? 'github-dark-default' : 'github-light-default',
         })
             .then((result) => {
                 if (!cancelled) setHtml(result);
@@ -51,7 +53,7 @@ export function CodePreview({ code, language, maxLines = 4, className = '' }: Co
                 if (!cancelled) {
                     codeToHtml(displayCode, {
                         lang: 'text',
-                        theme: 'github-dark-default',
+                        theme: mode === 'dark' ? 'github-dark-default' : 'github-light-default',
                     })
                         .then((result) => {
                             if (!cancelled) setHtml(result);
@@ -65,7 +67,7 @@ export function CodePreview({ code, language, maxLines = 4, className = '' }: Co
         return () => {
             cancelled = true;
         };
-    }, [displayCode, language]);
+    }, [displayCode, language, mode]);
 
     if (!html) {
         // Fallback: plain pre/code while shiki loads

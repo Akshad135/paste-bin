@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { codeToHtml } from 'shiki';
 import { api, type Paste } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useTheme } from '@/components/ThemeProvider';
 import { getLanguageLabel, timeAgo } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -55,6 +56,7 @@ const EXT_MAP: Record<string, string> = {
 export function ViewPaste() {
     const { slug } = useParams<{ slug: string }>();
     const { isAuthenticated } = useAuth();
+    const { mode } = useTheme();
     const navigate = useNavigate();
 
     const [paste, setPaste] = useState<Paste | null>(null);
@@ -70,7 +72,7 @@ export function ViewPaste() {
     useEffect(() => {
         if (!paste) return;
         highlightCode();
-    }, [paste]);
+    }, [paste, mode]);
 
     const loadPaste = async () => {
         setLoading(true);
@@ -92,7 +94,7 @@ export function ViewPaste() {
         try {
             const html = await codeToHtml(paste.content, {
                 lang,
-                theme: 'github-dark-default',
+                theme: mode === 'dark' ? 'github-dark-default' : 'github-light-default',
             });
             setHighlightedHtml(html);
         } catch {
@@ -100,7 +102,7 @@ export function ViewPaste() {
             try {
                 const html = await codeToHtml(paste.content, {
                     lang: 'text',
-                    theme: 'github-dark-default',
+                    theme: mode === 'dark' ? 'github-dark-default' : 'github-light-default',
                 });
                 setHighlightedHtml(html);
             } catch {

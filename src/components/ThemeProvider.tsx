@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type Mode = 'light' | 'dark';
-export type Palette = 'a' | 'b' | 'c' | 'd';
+export type Palette = 'a' | 'b' | 'c' | 'd' | 'e';
 
 export const PALETTE_META: Record<Palette, { name: string; emoji: string }> = {
-    a: { name: 'Purple Mint', emoji: '🟣' },
-    b: { name: 'Orange Fire', emoji: '🟠' },
-    c: { name: 'Pink Cream', emoji: '🩷' },
-    d: { name: 'Rose Peach', emoji: '🌸' },
+    a: { name: 'Catppuccin', emoji: '' },
+    b: { name: 'Dracula', emoji: '' },
+    c: { name: 'Nord', emoji: '' },
+    d: { name: 'Tokyo Night', emoji: '' },
+    e: { name: 'Shadcn', emoji: '' },
 };
 
 interface ThemeContextType {
@@ -28,7 +29,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const [palette, setPaletteState] = useState<Palette>(() => {
         const stored = localStorage.getItem('theme-palette');
-        if (stored && ['a', 'b', 'c', 'd'].includes(stored)) return stored as Palette;
+        if (stored && ['a', 'b', 'c', 'd', 'e'].includes(stored)) return stored as Palette;
         return 'a';
     });
 

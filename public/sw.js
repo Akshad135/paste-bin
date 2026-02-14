@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pastebin-v1';
+const CACHE_NAME = 'pastebin-v2';
 const STATIC_ASSETS = [
     '/',
     '/icon.svg',
