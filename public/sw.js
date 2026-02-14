@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pastebin-v4';
+const CACHE_NAME = 'pastebin-v5';
 const STATIC_ASSETS = [
     '/',
     '/icon.svg',
@@ -41,18 +41,25 @@ self.addEventListener('fetch', (event) => {
         return;
     }
 
-    // Navigation requests — network-first, fallback to cached shell
+    // Navigation requests — network-first with 3s timeout, fallback to cached shell
     if (request.mode === 'navigate') {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+
         event.respondWith(
-            fetch(request)
+            fetch(request, { signal: controller.signal })
                 .then((response) => {
+                    clearTimeout(timeout);
                     if (response.ok) {
                         const clone = response.clone();
                         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                     }
                     return response;
                 })
-                .catch(() => caches.match('/'))
+                .catch(() => {
+                    clearTimeout(timeout);
+                    return caches.match('/');
+                })
         );
         return;
     }

@@ -9,7 +9,7 @@ directory = "./dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "pastebin-db"
-database_id = "local"
+database_id = "90dab82a-f1f5-4226-8b18-cbe2475503e4"
 
 [observability]
 enabled = false
