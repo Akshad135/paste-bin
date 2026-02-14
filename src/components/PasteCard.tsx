@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { CodePreview } from '@/components/CodePreview';
 import type { Paste } from '@/lib/api';
 import { api } from '@/lib/api';
 import { getLanguageLabel, timeAgo } from '@/lib/constants';
@@ -47,8 +48,14 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
     };
 
     const copyContent = async () => {
-        await navigator.clipboard.writeText(paste.content);
-        toast.success('Copied to clipboard!');
+        try {
+            // List endpoint may only return preview, fetch full content
+            const { paste: full } = await api.paste.get(paste.slug);
+            await navigator.clipboard.writeText(full.content);
+            toast.success('Copied to clipboard!');
+        } catch {
+            toast.error('Failed to copy content');
+        }
     };
 
     const shareLink = async () => {
@@ -58,16 +65,13 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
     };
 
     const rawContent = paste.content || (paste as any).preview || '';
-    const previewLines = rawContent.split('\n').slice(0, 6);
-    const preview = previewLines.join('\n');
-    const isTruncated = rawContent.split('\n').length > 6 || rawContent.length > 200;
 
     return (
         <Card
             className="group cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 border-border/60 h-full flex flex-col"
             onClick={() => isAuthenticated && navigate(`/edit/${paste.slug}`)}
         >
-            <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
+            <CardContent className="p-4 gap-3 flex-1 flex flex-col">
                 {/* Header */}
                 <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -127,9 +131,7 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                 </div>
 
                 {/* Code preview */}
-                <pre className="text-xs font-mono leading-relaxed rounded-md p-3 overflow-hidden max-h-36 bg-black/5 dark:bg-white/[0.06] text-foreground/70 border border-border/40">
-                    <code>{preview}{isTruncated ? '\n…' : ''}</code>
-                </pre>
+                <CodePreview code={rawContent} language={paste.language} />
 
                 {/* Footer */}
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-auto pt-2">
