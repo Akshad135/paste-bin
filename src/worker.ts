@@ -91,7 +91,6 @@ const generateSlug = () => `${pick(adjectives)}-${pick(nouns)}-${pick(verbs)}`;
 // Expiration helpers
 // ---------------------------------------------------------------------------
 const EXPIRES_IN_MAP: Record<string, number> = {
-    '10s': 10,
     '10m': 10 * 60,
     '45m': 45 * 60,
     '2h': 2 * 60 * 60,

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { api, type Paste } from '@/lib/api';
-import { LANGUAGES, EXPIRATION_OPTIONS, timeUntilExpiry, isExpired } from '@/lib/constants';
+import { LANGUAGES, EXPIRATION_OPTIONS } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -282,7 +282,7 @@ export function EditPaste() {
                                     <SelectContent>
                                         {paste.expires_at && (
                                             <SelectItem value="__current__">
-                                                {isExpired(paste.expires_at) ? 'Expired' : timeUntilExpiry(paste.expires_at)}
+                                                Keep current expiration
                                             </SelectItem>
                                         )}
                                         {EXPIRATION_OPTIONS.map((opt) => (

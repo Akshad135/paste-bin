@@ -71,7 +71,6 @@ export function timeAgo(dateString: string): string {
 // Expiration options for time-based pastes
 export const EXPIRATION_OPTIONS = [
     { value: 'never', label: 'Never' },
-    { value: '10s', label: '10 seconds' },
     { value: '10m', label: '10 minutes' },
     { value: '45m', label: '45 minutes' },
     { value: '2h', label: '2 hours' },
