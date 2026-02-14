@@ -1,5 +1,5 @@
 /**
- * Seed script — populates the local dev database with 12 sample pastes.
+ * Seed script — populates the local dev database with 16 sample pastes.
  * Usage: bun run seed.ts
  */
 
@@ -8,626 +8,639 @@ const AUTH_KEY = "test123";
 
 // Login first
 const loginRes = await fetch(`${API}/api/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ passphrase: AUTH_KEY }),
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ passphrase: AUTH_KEY }),
 });
 const cookies = loginRes.headers.getSetCookie?.() ?? [loginRes.headers.get("set-cookie") ?? ""];
 const cookie = cookies.join("; ");
 console.log("Logged in:", (await loginRes.json()).success ? "✅" : "❌");
 
 const pastes = [
-    // 1. Pinned + Public — Python
-    {
-        title: "FastAPI Server Setup",
-        language: "python",
-        visibility: "public",
-        pinned: true,
-        content: `from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional
-import uvicorn
+  // 1. Pinned - Edgy Humor (Fake Keys)
+  {
+    title: "claude_api_keys.txt",
+    language: "text",
+    visibility: "public",
+    pinned: true,
+    content: `sk-ant-api03-Md8...7d9s-8d7f6g5h4j3k2l1
+sk-ant-api03-Kp2...9a8s-1d2f3g4h5j6k7l8
+# DO NOT SHARE THESE KEYS!!
+# usage: export CLAUDE_API_KEY=...
+# for akshad135's internal use only`,
+  },
 
-app = FastAPI(title="Notes API", version="1.0.0")
+  // 2. Pinned - Edgy Humor (Fake DB)
+  {
+    title: "prod_db_config.json",
+    language: "json",
+    visibility: "public",
+    pinned: true,
+    content: `{
+  "host": "production-db.cluster-ro-akshad135.us-east-1.rds.amazonaws.com",
+  "port": 5432,
+  "database": "users_prod",
+  "user": "admin",
+  "password": "correct-horse-battery-staple-123!",
+  "ssl": true,
+  "pool": {
+    "min": 2,
+    "max": 10
+  }
+}`,
+  },
 
-class Note(BaseModel):
-    title: str
-    content: str
-    tags: Optional[list[str]] = None
+  // 3. Pinned - Proper (Dotfiles)
+  {
+    title: "dotfiles/README.md",
+    language: "markdown",
+    visibility: "public",
+    pinned: true,
+    content: `# My Dotfiles
 
-notes_db: dict[int, Note] = {}
-counter = 0
+Automated setup key for my development environment.
 
-@app.post("/notes", status_code=201)
-async def create_note(note: Note):
-    global counter
-    counter += 1
-    notes_db[counter] = note
-    return {"id": counter, **note.model_dump()}
+## Installation
 
-@app.get("/notes/{note_id}")
-async def get_note(note_id: int):
-    if note_id not in notes_db:
-        raise HTTPException(status_code=404, detail="Note not found")
-    return {"id": note_id, **notes_db[note_id].model_dump()}
+\`\`\`bash
+git clone https://github.com/akshad135/dotfiles.git
+cd dotfiles
+./install.sh
+\`\`\`
 
-if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)`,
-    },
+## Features
 
-    // 2. Pinned + Private — TypeScript
-    {
-        title: "React Custom Hook — useDebounce",
-        language: "typescript",
-        visibility: "private",
-        pinned: true,
-        content: `import { useState, useEffect } from 'react';
+- **Neovim**: Custom Lua config with LSP
+- **Zsh**: Oh-My-Zsh with Powerlevel10k
+- **Tmux**: Productivity binding
+- **Git**: Aliases for rapid workflow
 
-/**
- * Debounces a value by the specified delay.
- * Useful for search inputs, API calls, etc.
- */
-export function useDebounce<T>(value: T, delay: number = 300): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+## Requirements
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+- Linux/macOS
+- Nerd Fonts patched terminal`,
+  },
 
-    return () => clearTimeout(timer);
-  }, [value, delay]);
+  // 4. Pinned - Proper (Competitive Programming)
+  {
+    title: "algo_template.cpp",
+    language: "cpp",
+    visibility: "public",
+    pinned: true,
+    content: `#include <bits/stdc++.h>
+using namespace std;
 
-  return debouncedValue;
+typedef long long ll;
+typedef vector<int> vi;
+typedef pair<int, int> pii;
+
+#define F first
+#define S second
+#define PB push_back
+#define MP make_pair
+#define REP(i, a, b) for (int i = a; i <= b; i++)
+
+void solve() {
+    int n, k;
+    cin >> n >> k;
+    vi v(n);
+    for (int &x : v) cin >> x;
+    
+    sort(v.begin(), v.end());
+    
+    // Logic goes here
+    // optimized for akshad135's workflow
+    
+    cout << "YES\\n";
 }
 
-// Usage example:
-// const [search, setSearch] = useState('');
-// const debouncedSearch = useDebounce(search, 500);
-//
-// useEffect(() => {
-//   fetchResults(debouncedSearch);
-// }, [debouncedSearch]);`,
-    },
+int main() {
+    ios::sync_with_stdio(0);
+    cin.tie(0);
+    
+    int t;
+    cin >> t;
+    while (t--) {
+        solve();
+    }
+    return 0;
+}`,
+  },
 
-    // 3. Pinned + Public — Bash
-    {
-        title: "Docker Compose Cheatsheet",
-        language: "bash",
-        visibility: "public",
-        pinned: true,
-        content: `#!/bin/bash
-# Docker Compose Cheatsheet — common commands
+  // 5. Proper - TypeScript
+  {
+    title: "stripe_webhook.ts",
+    language: "typescript",
+    visibility: "public",
+    pinned: false,
+    content: `import Stripe from "stripe";
+import { buffer } from "micro";
+import { NextApiRequest, NextApiResponse } from "next";
 
-# Start all services in detached mode
-docker compose up -d
-
-# Rebuild and start
-docker compose up -d --build
-
-# Stop all services
-docker compose down
-
-# Stop and remove volumes (⚠️ destructive)
-docker compose down -v
-
-# View logs (follow mode)
-docker compose logs -f
-
-# View logs for a specific service
-docker compose logs -f api
-
-# Scale a service
-docker compose up -d --scale worker=3
-
-# Execute command in running container
-docker compose exec api sh
-
-# List running services
-docker compose ps
-
-# Pull latest images
-docker compose pull
-
-# Restart a specific service
-docker compose restart api`,
-    },
-
-    // 4. Not pinned + Public — JavaScript
-    {
-        title: "Express Middleware Stack",
-        language: "javascript",
-        visibility: "public",
-        pinned: false,
-        content: `const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-
-const app = express();
-
-// Security headers
-app.use(helmet());
-
-// CORS
-app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-  credentials: true,
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
-  message: { error: 'Too many requests, slow down.' },
-});
-app.use('/api/', limiter);
-
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Logging
-app.use(morgan('combined'));
-
-// Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2023-10-16",
 });
 
-app.listen(3000, () => console.log('Server running on :3000'));`,
-    },
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
-    // 5. Not pinned + Private — CSS
+export default async function handler(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
+  if (req.method === "POST") {
+    const buf = await buffer(req);
+    const sig = req.headers["stripe-signature"]!;
+
+    let event: Stripe.Event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        buf.toString(),
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET!
+      );
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      // Log error to monitoring
+      console.log(\`❌ Error message: \${errorMessage}\`);
+      res.status(400).send(\`Webhook Error: \${errorMessage}\`);
+      return;
+    }
+
+    console.log("✅ Success:", event.id);
+
+    if (event.type === "checkout.session.completed") {
+      const subscription = event.data.object as Stripe.Checkout.Session;
+      // Grant access to user
+    }
+
+    res.json({ received: true });
+  } else {
+    res.setHeader("Allow", "POST");
+    res.status(405).end("Method Not Allowed");
+  }
+}`,
+  },
+
+  // 6. Proper - Python
+  {
+    title: "settings.py",
+    language: "python",
+    visibility: "public",
+    pinned: false,
+    content: `import os
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "unsafe-default-key-change-me")
+
+DEBUG = os.getenv("DEBUG", "False") == "True"
+
+ALLOWED_HOSTS = ["*"]
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "rest_framework",
+    "corsheaders",
+    "api",
+    "core", // Main logic by akshad135
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.common.CommonMiddleware",
+]
+
+ROOT_URLCONF = "config.urls"
+
+WSGI_APPLICATION = "config.wsgi.application"`,
+  },
+
+  // 7. Proper - Nginx
+  {
+    title: "nginx.conf",
+    language: "nginx",
+    visibility: "public",
+    pinned: false,
+    content: `server {
+    listen 80;
+    server_name api.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    ssl_certificate /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN";
+        add_header X-XSS-Protection "1; mode=block";
+    }
+}`,
+  },
+
+  // 8. Proper - YAML
+  {
+    title: "docker-compose.yml",
+    language: "yaml",
+    visibility: "public",
+    pinned: false,
+    content: `version: "3.8"
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://user:pass@db:5432/mydb
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=mydb
+
+  redis:
+    image: redis:7-alpine
+
+  worker:
+    build: .
+    command: npm run worker
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:`,
+  },
+
+  // 9. Proper - Log
+  {
+    title: "cargo-build.log",
+    language: "text", // closest to log
+    visibility: "public",
+    pinned: false,
+    content: `error[E0382]: use of moved value: \`content\`
+  --> src/main.rs:42:20
+   |
+35 |     let content = String::from("hello");
+   |         ------- move occurs because \`content\` has type \`String\`, which does not implement the \`Copy\` trait
+...
+41 |     process_data(content);
+   |                  ------- value moved here
+42 |     println!("{}", content);
+   |                    ^^^^^^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+41 |     process_data(content.clone());
+   |                         ++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try \`rustc --explain E0382\`.
+error: could not compile \`paste-bin\` due to previous error`,
+  },
+
+  // 10. Proper - GraphQL
+  {
+    title: "schema.graphql",
+    language: "graphql",
+    visibility: "public",
+    pinned: false,
+    content: `type User {
+  id: ID!
+  username: String!
+  email: String!
+  avatarUrl: String
+  posts: [Post!]!
+  createdAt: String!
+}
+
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  published: Boolean!
+  author: User!
+  comments: [Comment!]!
+}
+
+type Comment {
+  id: ID!
+  text: String!
+  author: User!
+}
+
+type Query {
+  me: User
+  feed(offset: Int, limit: Int): [Post!]!
+  post(id: ID!): Post
+}
+
+type Mutation {
+  createPost(title: String!, content: String!): Post!
+  publishPost(id: ID!): Post
+  deletePost(id: ID!): Boolean
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+}`,
+  },
+
+  // 11. Proper - Solidity
+  {
+    title: "PaymentChannel.sol",
+    language: "solidity",
+    visibility: "public",
+    pinned: false,
+    content: `// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract SimplePaymentChannel {
+    address payable public sender;
+    address payable public recipient;
+    uint256 public expiration;
+
+    constructor(address payable _recipient, uint256 duration) payable {
+        sender = payable(msg.sender);
+        recipient = _recipient;
+        expiration = block.timestamp + duration;
+    }
+
+    function close(uint256 amount, bytes memory signature) external {
+        require(msg.sender == recipient);
+        require(isValidSignature(amount, signature));
+
+        recipient.transfer(amount);
+        selfdestruct(sender);
+    }
+
+    function extend(uint256 newExpiration) external {
+        require(msg.sender == sender);
+        require(newExpiration > expiration);
+        expiration = newExpiration;
+    }
+
+    function claimTimeout() external {
+        require(block.timestamp >= expiration);
+        selfdestruct(sender);
+    }
+
+    function isValidSignature(uint256 amount, bytes memory signature)
+        internal
+        view
+        returns (bool)
     {
-        title: "Glassmorphism Card Styles",
-        language: "css",
-        visibility: "private",
-        pinned: false,
-        content: `/* Glassmorphism card styles with animated gradient border */
+        bytes32 message = prefixed(keccak256(abi.encodePacked(this, amount)));
+        return recoverSigner(message, signature) == sender;
+    }
+    
+    // Internal helper functions omitted for brevity
+}`,
+  },
 
-.glass-card {
-  position: relative;
-  padding: 2rem;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
+  // 12. Edgy - Kernel Panic
+  {
+    title: "kernel_panic.txt",
+    language: "text",
+    visibility: "public",
+    pinned: false,
+    content: `Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)
+CPU: 0 PID: 1 Comm: swapper/0 Not tainted 5.15.0-76-generic #83-Ubuntu
+Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.13.0-1ubuntu1.1 04/01/2014
+Call Trace:
+ <TASK>
+ dump_stack_lvl+0x4a/0x63
+ dump_stack+0x10/0x16
+ panic+0x14c/0x321
+ mount_block_root+0x2c6/0x2d5
+ mount_root+0x38/0x3a
+ prepare_namespace+0x13f/0x191
+ kernel_init_freeable+0x25f/0x289
+ ? rest_init+0xd0/0xd0
+ kernel_init+0x16/0x120
+ ret_from_fork+0x22/0x30
+ </TASK>
+Kernel Offset: 0x36000000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
+---[ end Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0) ]---`,
+  },
 
-.glass-card:hover {
-  transform: translateY(-4px);
-  box-shadow:
-    0 16px 48px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
+  // 13. Edgy - CSS Hack
+  {
+    title: "weird_hacks.css",
+    language: "css",
+    visibility: "public",
+    pinned: false,
+    content: `/* Do not touch this file unless you want to break IE11 support */
 
-.glass-card::before {
-  content: '';
+* { box-sizing: border-box; }
+
+/* The "Holy Grail" Centering Hack */
+.absolute-center {
   position: absolute;
-  inset: -1px;
-  border-radius: 17px;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.15),
-    rgba(255, 255, 255, 0),
-    rgba(255, 255, 255, 0.08)
-  );
-  z-index: -1;
-  animation: shimmer 3s ease-in-out infinite;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-@keyframes shimmer {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+/* Clearfix because floats are still a thing apparently */
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/* Comic Sans for critical errors to reduce panic */
+.error-message {
+  font-family: "Comic Sans MS", "Chalkboard SE", sans-serif !important;
+  color: red;
+  font-weight: bold;
+}
+
+/* Hide scrollbar but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Akshad135's secret sauce */
+.glass-morphism {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }`,
-    },
-
-    // 6. Not pinned + Public — Rust
-    {
-        title: "Rust CLI Argument Parser",
-        language: "rust",
-        visibility: "public",
-        pinned: false,
-        content: `use std::env;
-use std::process;
-
-#[derive(Debug)]
-struct Config {
-    input: String,
-    output: String,
-    verbose: bool,
-    threads: usize,
-}
-
-impl Config {
-    fn parse(args: &[String]) -> Result<Self, String> {
-        let mut input = String::new();
-        let mut output = String::from("output.txt");
-        let mut verbose = false;
-        let mut threads: usize = 4;
-
-        let mut i = 1;
-        while i < args.len() {
-            match args[i].as_str() {
-                "-i" | "--input" => {
-                    i += 1;
-                    input = args.get(i).ok_or("Missing input value")?.clone();
-                }
-                "-o" | "--output" => {
-                    i += 1;
-                    output = args.get(i).ok_or("Missing output value")?.clone();
-                }
-                "-v" | "--verbose" => verbose = true,
-                "-t" | "--threads" => {
-                    i += 1;
-                    threads = args.get(i)
-                        .ok_or("Missing threads value")?
-                        .parse()
-                        .map_err(|_| "Invalid thread count")?;
-                }
-                _ => return Err(format!("Unknown argument: {}", args[i])),
-            }
-            i += 1;
-        }
-
-        if input.is_empty() {
-            return Err("Input file is required".into());
-        }
-
-        Ok(Config { input, output, verbose, threads })
-    }
-}
-
-fn main() {
-    let args: Vec<String> = env::args().collect();
-    let config = Config::parse(&args).unwrap_or_else(|e| {
-        eprintln!("Error: {e}");
-        process::exit(1);
-    });
-
-    if config.verbose {
-        println!("Config: {config:#?}");
-    }
-
-    println!("Processing {} → {}", config.input, config.output);
-}`,
-    },
-
-    // 7. Not pinned + Private — SQL
-    {
-        title: "Analytics Queries Collection",
-        language: "sql",
-        visibility: "private",
-        pinned: false,
-        content: `-- Daily active users (last 30 days)
-SELECT
-    DATE(created_at) AS day,
-    COUNT(DISTINCT user_id) AS dau
-FROM events
-WHERE created_at >= DATE('now', '-30 days')
-GROUP BY DATE(created_at)
-ORDER BY day DESC;
-
--- Top 10 most viewed pages
-SELECT
-    page_path,
-    COUNT(*) AS views,
-    COUNT(DISTINCT session_id) AS unique_views,
-    ROUND(AVG(time_on_page), 1) AS avg_seconds
-FROM page_views
-WHERE viewed_at >= DATE('now', '-7 days')
-GROUP BY page_path
-ORDER BY views DESC
-LIMIT 10;
-
--- User retention cohort (week-over-week)
-WITH cohort AS (
-    SELECT
-        user_id,
-        DATE(MIN(created_at), 'weekday 0', '-6 days') AS cohort_week
-    FROM users
-    GROUP BY user_id
-)
-SELECT
-    c.cohort_week,
-    COUNT(DISTINCT c.user_id) AS cohort_size,
-    COUNT(DISTINCT CASE
-        WHEN e.created_at BETWEEN c.cohort_week AND DATE(c.cohort_week, '+6 days')
-        THEN e.user_id END) AS week_0,
-    COUNT(DISTINCT CASE
-        WHEN e.created_at BETWEEN DATE(c.cohort_week, '+7 days') AND DATE(c.cohort_week, '+13 days')
-        THEN e.user_id END) AS week_1
-FROM cohort c
-LEFT JOIN events e ON c.user_id = e.user_id
-GROUP BY c.cohort_week
-ORDER BY c.cohort_week DESC;`,
-    },
-
-    // 8. Not pinned + Public — JSON config
-    {
-        title: "ESLint Flat Config",
-        language: "json",
-        visibility: "public",
-        pinned: false,
-        content: `{
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
-  "parser": "@typescript-eslint/parser",
-  "parserOptions": {
-    "ecmaVersion": 2024,
-    "sourceType": "module",
-    "project": "./tsconfig.json"
   },
-  "plugins": ["@typescript-eslint", "import"],
-  "rules": {
-    "no-console": ["warn", { "allow": ["warn", "error"] }],
-    "no-unused-vars": "off",
-    "@typescript-eslint/no-unused-vars": ["error", {
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_"
-    }],
-    "@typescript-eslint/explicit-function-return-type": "off",
-    "@typescript-eslint/no-explicit-any": "warn",
-    "import/order": ["error", {
-      "groups": ["builtin", "external", "internal", "parent", "sibling"],
-      "newlines-between": "always",
-      "alphabetize": { "order": "asc" }
-    }],
-    "prefer-const": "error",
-    "no-var": "error"
+
+  // 14. Proper - Assembly
+  {
+    title: "boot.asm",
+    language: "assembly", // or nasm
+    visibility: "public",
+    pinned: false,
+    content: `; Simple MBR Bootloader
+; BITS 16
+
+start:
+    mov ax, 07C0h       ; Set up 4K stack space after this bootloader
+    add ax, 288         ; (4096 + 512) / 16 bytes per paragraph
+    mov ss, ax
+    mov sp, 4096
+
+    mov ax, 07C0h       ; Set data segment to where we're loaded
+    mov ds, ax
+
+    mov si, text_string ; Put string position into SI
+    call print_string   ; Call our string-printing routine
+
+    jmp $               ; Jump here - infinite loop!
+
+text_string db 'Hello from Akshad135 OS!', 0
+
+print_string:           ; Routine: output string in SI to screen
+    mov ah, 0Eh         ; int 10h 'print char' function
+
+.repeat:
+    lodsb               ; Get character from string
+    cmp al, 0
+    je .done            ; If char is zero, end of string
+    int 10h             ; Otherwise, print it
+    jmp .repeat
+
+.done:
+    ret
+
+times 510-($-$$) db 0   ; Pad remainder of 512 bytes with 0s
+dw 0AA55h               ; The standard PC boot signature`,
   },
-  "ignorePatterns": ["dist/", "node_modules/", "*.config.js"]
+
+  // 15. Proper - JSON UI Config
+  {
+    title: "shadcn-components.json",
+    language: "json",
+    visibility: "public",
+    pinned: false,
+    content: `{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "new-york",
+  "rsc": true,
+  "tsx": true,
+  "tailwind": {
+    "config": "tailwind.config.js",
+    "css": "app/globals.css",
+    "baseColor": "slate",
+    "cssVariables": true
+  },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils"
+  },
+  "iconLibrary": "lucide-react",
+  "components": [
+    "accordion",
+    "alert",
+    "alert-dialog",
+    "aspect-ratio",
+    "avatar",
+    "badge",
+    "button",
+    "card",
+    "checkbox",
+    "collapsible"
+  ]
 }`,
-    },
+  },
 
-    // 9. Not pinned + Private — Go
-    {
-        title: "Go HTTP Server with Middleware",
-        language: "go",
-        visibility: "private",
-        pinned: false,
-        content: `package main
+  // 16. Proper - Markdown Todo
+  {
+    title: "TODO.md",
+    language: "markdown",
+    visibility: "public",
+    pinned: false,
+    content: `# Project Roadmap
 
-import (
-\t"encoding/json"
-\t"log"
-\t"net/http"
-\t"time"
-)
+## High Priority
+- [x] Fix production DB connection leak
+- [ ] Implement dark mode (use akshad135's palette)
+- [ ] Add unit tests for payment service
 
-type Response struct {
-\tMessage string \`json:"message"\`
-\tTime    string \`json:"time"\`
-}
+## Low Priority
+- [ ] Refactor legacy jQuery code
+- [ ] Update dependencies
+- [ ] Write documentation
 
-// Logging middleware
-func withLogging(next http.Handler) http.Handler {
-\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-\t\tstart := time.Now()
-\t\tnext.ServeHTTP(w, r)
-\t\tlog.Printf("%s %s %v", r.Method, r.URL.Path, time.Since(start))
-\t})
-}
+## Ideas
+- Add AI-powered code completion?
+- Build a CLI tool in Rust
+- **Star the repo**: don't forget to star the main repo on GitHub!
 
-// CORS middleware
-func withCORS(next http.Handler) http.Handler {
-\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-\t\tw.Header().Set("Access-Control-Allow-Origin", "*")
-\t\tw.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-\t\tw.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-\t\tif r.Method == "OPTIONS" {
-\t\t\tw.WriteHeader(http.StatusNoContent)
-\t\t\treturn
-\t\t}
-\t\tnext.ServeHTTP(w, r)
-\t})
-}
-
-func healthHandler(w http.ResponseWriter, r *http.Request) {
-\tw.Header().Set("Content-Type", "application/json")
-\tjson.NewEncoder(w).Encode(Response{
-\t\tMessage: "ok",
-\t\tTime:    time.Now().Format(time.RFC3339),
-\t})
-}
-
-func main() {
-\tmux := http.NewServeMux()
-\tmux.HandleFunc("/health", healthHandler)
-
-\thandler := withLogging(withCORS(mux))
-
-\tlog.Println("Server starting on :8080")
-\tlog.Fatal(http.ListenAndServe(":8080", handler))
-}`,
-    },
-
-    // 10. Not pinned + Public — YAML
-    {
-        title: "GitHub Actions CI Pipeline",
-        language: "yaml",
-        visibility: "public",
-        pinned: false,
-        content: `name: CI Pipeline
-
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
-
-concurrency:
-  group: \${{ github.workflow }}-\${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun run lint
-
-  test:
-    needs: lint
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [20, 22]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bun test
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: test-results
-          path: coverage/
-
-  deploy:
-    needs: test
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-      - run: bun install --frozen-lockfile
-      - run: bun run build
-      - run: bunx wrangler deploy
-        env:
-          CLOUDFLARE_API_TOKEN: \${{ secrets.CF_API_TOKEN }}`,
-    },
-
-    // 11. Not pinned + Private — HTML
-    {
-        title: "Email Template — Welcome",
-        language: "html",
-        visibility: "private",
-        pinned: false,
-        content: `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome!</title>
-</head>
-<body style="margin:0; padding:0; background:#f4f4f5; font-family:'Segoe UI',sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px;">
-    <tr>
-      <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0"
-               style="background:#fff; border-radius:12px; overflow:hidden;
-                      box-shadow:0 4px 24px rgba(0,0,0,0.08);">
-          <!-- Header -->
-          <tr>
-            <td style="background:linear-gradient(135deg,#6366f1,#8b5cf6);
-                       padding:40px 32px; text-align:center;">
-              <h1 style="color:#fff; margin:0; font-size:28px;">Welcome aboard! 🎉</h1>
-            </td>
-          </tr>
-          <!-- Body -->
-          <tr>
-            <td style="padding:32px;">
-              <p style="color:#374151; font-size:16px; line-height:1.6;">
-                Hey there! Thanks for signing up. We're excited to have you.
-              </p>
-              <a href="#" style="display:inline-block; background:#6366f1; color:#fff;
-                 padding:12px 32px; border-radius:8px; text-decoration:none;
-                 font-weight:600; margin-top:16px;">
-                Get Started →
-              </a>
-            </td>
-          </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="padding:24px 32px; background:#f9fafb; text-align:center;">
-              <p style="color:#9ca3af; font-size:13px; margin:0;">
-                You received this because you signed up at example.com
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`,
-    },
-
-    // 12. Not pinned + Public — Markdown
-    {
-        title: "Project Architecture Notes",
-        language: "markdown",
-        visibility: "public",
-        pinned: false,
-        content: `# Architecture Overview
-
-## Stack
-- **Frontend**: React 19 + Vite + TypeScript
-- **Backend**: Cloudflare Workers (prod) / Bun (dev)
-- **Database**: Cloudflare D1 (SQLite at the edge)
-- **Auth**: Cookie-based, single passphrase
-
-## Directory Structure
-\`\`\`
-src/
-├── components/     # Reusable UI components
-├── pages/          # Route-level page components
-├── lib/            # Utilities, API client, themes
-├── worker.ts       # Cloudflare Worker entry (prod)
-migrations/         # D1 SQL migrations
-dev-server.ts       # Bun dev API server (local only)
-\`\`\`
-
-## Data Flow
-1. User hits the SPA (served from Workers \`[assets]\`)
-2. SPA makes \`/api/*\` calls → Worker routes them
-3. Worker reads/writes D1 via binding
-4. Auth cookie set on login, checked on every mutating request
-
-## Design Decisions
-- **No accounts** — single-user, passphrase auth keeps it simple
-- **Edge-first** — D1 + Workers = globally fast, zero cold starts
-- **PWA** — installable, works offline for cached pastes
-- **Themes** — 5 palettes × 2 modes = 10 visual options`,
-    },
+## Notes
+Meeting with stakeholders on Friday at 10 AM. Bring coffee.`,
+  },
 ];
 
 // Create all pastes
 for (const paste of pastes) {
-    const { pinned, ...createBody } = paste;
-    const res = await fetch(`${API}/api/paste`, {
-        method: "POST",
+  const { pinned, ...createBody } = paste;
+  const res = await fetch(`${API}/api/paste`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Cookie: cookie },
+    body: JSON.stringify(createBody),
+  });
+  const data = await res.json() as { slug?: string; success?: boolean };
+
+  if (data.success && data.slug) {
+    console.log(`✅ Created: "${paste.title}" → ${data.slug} (${paste.language}, ${paste.visibility})`);
+
+    // Pin if needed
+    if (pinned) {
+      await fetch(`${API}/api/paste/${data.slug}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json", Cookie: cookie },
-        body: JSON.stringify(createBody),
-    });
-    const data = await res.json() as { slug?: string; success?: boolean };
-
-    if (data.success && data.slug) {
-        console.log(`✅ Created: "${paste.title}" → ${data.slug} (${paste.language}, ${paste.visibility})`);
-
-        // Pin if needed
-        if (pinned) {
-            await fetch(`${API}/api/paste/${data.slug}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json", Cookie: cookie },
-                body: JSON.stringify({ pinned: 1 }),
-            });
-            console.log(`   📌 Pinned`);
-        }
-    } else {
-        console.log(`❌ Failed: "${paste.title}"`, data);
+        body: JSON.stringify({ pinned: 1 }),
+      });
+      console.log(`   📌 Pinned`);
     }
+  } else {
+    console.log(`❌ Failed: "${paste.title}"`, data);
+  }
 }
 
-console.log("\n🎉 Done! 12 sample pastes created.");
+console.log("\n🎉 Done! 16 sample pastes created.");
