@@ -6,6 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { Home } from '@/pages/Home';
 import { NewPaste } from '@/pages/NewPaste';
 import { EditPaste } from '@/pages/EditPaste';
+import { ViewPaste } from '@/pages/ViewPaste';
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/new" element={<NewPaste />} />
+                <Route path="/paste/:slug" element={<ViewPaste />} />
                 <Route path="/edit/:slug" element={<EditPaste />} />
               </Routes>
             </main>

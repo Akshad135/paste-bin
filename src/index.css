@@ -319,6 +319,19 @@
   display: none;
 }
 
+/* ─── Full-page code view ─── */
+.code-view-full .shiki {
+  padding: 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  min-height: 100%;
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+.dark .code-view-full .shiki {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
 /* ─── Paste editor textarea ─── */
 .paste-editor {
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;

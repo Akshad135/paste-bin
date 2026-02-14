@@ -69,7 +69,7 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
     return (
         <Card
             className="group cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 border-border/60 h-full flex flex-col"
-            onClick={() => isAuthenticated && navigate(`/edit/${paste.slug}`)}
+            onClick={() => navigate(`/paste/${paste.slug}`)}
         >
             <CardContent className="p-3 gap-2 flex-1 flex flex-col">
                 {/* Header: title + badges + menu all in one row */}
