@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { api, type Paste } from '@/lib/api';
 import { PasteCard } from '@/components/PasteCard';
 import { useAuth } from '@/lib/auth';
@@ -18,24 +18,32 @@ export function Home() {
     const [hasMore, setHasMore] = useState(false);
     const [error, setError] = useState('');
     const { isAuthenticated } = useAuth();
-    const { markStale, clearStale, isOffline } = useOffline();
+    const { markStale, clearStale, isOffline, setBackendDown } = useOffline();
     const navigate = useNavigate();
 
-    // Track whether we've done the initial load — avoid showing
-    // the skeleton loader again when switching tabs or navigating back
     const hasLoadedOnce = useRef(false);
+    // A counter we bump whenever we want to trigger a fresh load
+    const [loadTrigger, setLoadTrigger] = useState(0);
 
-    // Reset to page 1 when auth state changes
+    // Reset to page 1 when auth changes
     useEffect(() => {
         setPage(1);
         hasLoadedOnce.current = false;
+        setLoadTrigger(t => t + 1);
     }, [isAuthenticated]);
 
+    // When coming back online, trigger a refresh
+    useEffect(() => {
+        const handleOnline = () => setLoadTrigger(t => t + 1);
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
+    }, []);
+
+    // Main data load effect
     useEffect(() => {
         let cancelled = false;
 
         const load = async () => {
-            // Only show full skeleton on very first load (no data yet)
             if (!hasLoadedOnce.current) {
                 setLoading(true);
             }
@@ -44,7 +52,6 @@ export function Home() {
             try {
                 const result = await api.paste.list(page, 20, (freshResult) => {
                     if (cancelled) return;
-                    // Background refresh callback — silently update UI
                     if (page === 1) {
                         setPastes(freshResult.data.pastes);
                     } else {
@@ -60,7 +67,6 @@ export function Home() {
 
                 if (cancelled) return;
 
-                // Initial result (possibly from cache)
                 if (page === 1) {
                     setPastes(result.data.pastes);
                 } else {
@@ -72,43 +78,27 @@ export function Home() {
                     markStale();
                 } else {
                     clearStale();
+                    setBackendDown(false);
                 }
-
                 hasLoadedOnce.current = true;
             } catch (err) {
                 if (cancelled) return;
                 console.error('Failed to load pastes:', err);
                 setError(err instanceof Error ? err.message : 'Failed to connect to server');
+                if (navigator.onLine) setBackendDown(true);
             } finally {
-                if (!cancelled) {
-                    setLoading(false);
-                }
+                if (!cancelled) setLoading(false);
             }
         };
 
         load();
-
         return () => { cancelled = true; };
-    }, [page, isAuthenticated]);
+    }, [page, loadTrigger, markStale, clearStale]);
 
-    const handleRetry = () => {
+    const handleRetry = useCallback(() => {
         hasLoadedOnce.current = false;
-        setError('');
-        setLoading(true);
-        // Force re-trigger by toggling page
-        setPage(p => p);
-        // Actually just directly call the load
-        api.paste.list(page, 20).then(result => {
-            setPastes(result.data.pastes);
-            setHasMore(result.data.hasMore);
-            if (result.fromCache) markStale(); else clearStale();
-            hasLoadedOnce.current = true;
-        }).catch(err => {
-            setError(err instanceof Error ? err.message : 'Failed to connect to server');
-        }).finally(() => {
-            setLoading(false);
-        });
-    };
+        setLoadTrigger(t => t + 1);
+    }, []);
 
     const handleVisibilityChange = (slug: string, newVisibility: 'public' | 'private') => {
         setPastes((prev) =>
@@ -123,7 +113,6 @@ export function Home() {
     const handlePinChange = (slug: string, pinned: boolean) => {
         setPastes((prev) => {
             const updated = prev.map((p) => (p.slug === slug ? { ...p, pinned: pinned ? 1 : 0 } : p));
-            // Re-sort: pinned first, then by created_at desc
             return updated.sort((a, b) => {
                 if (a.pinned !== b.pinned) return b.pinned - a.pinned;
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -133,7 +122,6 @@ export function Home() {
 
     return (
         <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4">
-            {/* Content */}
             {loading && pastes.length === 0 ? (
                 <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     {Array.from({ length: 12 }).map((_, i) => (
@@ -157,7 +145,10 @@ export function Home() {
                     </div>
                     <h2 className="text-lg font-semibold">Connection Error</h2>
                     <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                        {error}. Make sure the API server is running.
+                        {isOffline
+                            ? 'You are offline and no cached data is available. Connect to the internet and try again.'
+                            : `${error}. Make sure the API server is running.`
+                        }
                     </p>
                     <Button variant="outline" className="mt-4" onClick={handleRetry}>
                         <RefreshCWIcon size={16} className="mr-1.5" />

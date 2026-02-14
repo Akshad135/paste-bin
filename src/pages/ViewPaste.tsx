@@ -57,7 +57,7 @@ const EXT_MAP: Record<string, string> = {
 export function ViewPaste() {
     const { slug } = useParams<{ slug: string }>();
     const { isAuthenticated } = useAuth();
-    const { isOffline, markStale, clearStale } = useOffline();
+    const { isOffline, markStale, clearStale, setBackendDown } = useOffline();
     const { mode } = useTheme();
     const navigate = useNavigate();
 
@@ -65,48 +65,67 @@ export function ViewPaste() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [highlightedHtml, setHighlightedHtml] = useState('');
+    const [loadTrigger, setLoadTrigger] = useState(0);
 
-    // Prevent showing skeleton on re-visit if we already have the paste
     const hasLoadedOnce = useRef(false);
 
+    // When coming back online, trigger a refresh
+    useEffect(() => {
+        const handleOnline = () => setLoadTrigger(t => t + 1);
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
+    }, []);
+
+    // Main data load effect
     useEffect(() => {
         if (!slug) return;
-        loadPaste();
-    }, [slug]);
+        let cancelled = false;
+
+        // Reset state for new slug
+        setHighlightedHtml('');
+        setPaste(null);
+
+        const load = async () => {
+            if (!hasLoadedOnce.current) {
+                setLoading(true);
+            }
+            setError('');
+            try {
+                const result = await api.paste.get(slug, (freshResult) => {
+                    if (cancelled) return;
+                    setPaste(freshResult.data.paste);
+                    clearStale();
+                });
+
+                if (cancelled) return;
+
+                setPaste(result.data.paste);
+
+                if (result.fromCache) {
+                    markStale();
+                } else {
+                    clearStale();
+                    setBackendDown(false);
+                }
+                hasLoadedOnce.current = true;
+            } catch (err) {
+                if (cancelled) return;
+                console.error('Failed to load paste:', err);
+                setError(err instanceof Error ? err.message : 'Failed to load paste');
+                if (navigator.onLine) setBackendDown(true);
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        };
+
+        load();
+        return () => { cancelled = true; };
+    }, [slug, loadTrigger]);
 
     useEffect(() => {
         if (!paste) return;
         highlightCode();
     }, [paste, mode]);
-
-    const loadPaste = async () => {
-        if (!hasLoadedOnce.current) {
-            setLoading(true);
-        }
-        setError('');
-        try {
-            const result = await api.paste.get(slug!, (freshResult) => {
-                // Background refresh — silently swap in fresh data
-                setPaste(freshResult.data.paste);
-                clearStale();
-            });
-
-            setPaste(result.data.paste);
-
-            if (result.fromCache) {
-                markStale();
-            } else {
-                clearStale();
-            }
-
-            hasLoadedOnce.current = true;
-        } catch (err) {
-            console.error('Failed to load paste:', err);
-            setError(err instanceof Error ? err.message : 'Failed to load paste');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const highlightCode = async () => {
         if (!paste) return;
@@ -195,8 +214,8 @@ export function ViewPaste() {
         );
     }
 
-    // Error state
-    if (error || !paste) {
+    // Error state — only show after loading is complete
+    if (!loading && (error || !paste)) {
         return (
             <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-6">
                 <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -215,6 +234,9 @@ export function ViewPaste() {
             </div>
         );
     }
+
+    // Still loading or no paste data yet (shouldn't reach here, but satisfy TS)
+    if (!paste) return null;
 
     const lineCount = paste.content.split('\n').length;
     const canEdit = isAuthenticated && !isOffline;

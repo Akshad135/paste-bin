@@ -159,7 +159,7 @@ function handleListPastes(req: Request) {
 
     const pastes = db
       .query(
-        `SELECT id, slug, title, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ${whereClause} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?`
+        `SELECT id, slug, title, content, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ${whereClause} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?`
       )
       .all(limit, offset);
 

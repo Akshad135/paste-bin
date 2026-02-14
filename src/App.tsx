@@ -55,8 +55,8 @@ function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProvider>
-          <OfflineProvider>
+        <OfflineProvider>
+          <AuthProvider>
             <div className="h-screen flex flex-col overflow-hidden">
               <Navbar />
               <OfflineBanner />
@@ -70,10 +70,10 @@ function App() {
               </main>
             </div>
             <ThemedToaster />
-          </OfflineProvider>
-        </AuthProvider>
+          </AuthProvider>
+        </OfflineProvider>
       </ThemeProvider>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 

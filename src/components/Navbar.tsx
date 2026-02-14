@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { useOffline } from '@/lib/offlineContext';
 import { useTheme, PALETTE_META, type Palette } from '@/components/ThemeProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,7 @@ import { toast } from 'sonner';
 
 export function Navbar() {
     const { isAuthenticated, logout, login } = useAuth();
+    const { isEffectivelyOffline } = useOffline();
     const { mode, palette, toggleMode, setPalette } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
@@ -174,7 +176,7 @@ export function Navbar() {
                                 {mode === 'dark' ? <SunIcon size={16} /> : <MoonIcon size={16} />}
                             </Button>
 
-                            {isAuthenticated ? (
+                            {!isEffectivelyOffline && (isAuthenticated ? (
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -193,7 +195,7 @@ export function Navbar() {
                                     <KeyIcon size={16} className="mr-1.5" />
                                     Login
                                 </Button>
-                            )}
+                            ))}
                         </div>
 
                         {/* Mobile: hamburger menu */}
@@ -225,8 +227,8 @@ export function Navbar() {
                                     </DropdownMenuItem>
                                 ))}
                                 <DropdownMenuSeparator />
-                                {/* Auth */}
-                                {isAuthenticated ? (
+                                {/* Auth — hidden when offline */}
+                                {!isEffectivelyOffline && (isAuthenticated ? (
                                     <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                         <LogoutIcon size={16} className="mr-2" /> Logout
                                     </DropdownMenuItem>
@@ -234,7 +236,7 @@ export function Navbar() {
                                     <DropdownMenuItem onClick={() => setIsLoginOpen(true)}>
                                         <KeyIcon size={16} className="mr-2" /> Login
                                     </DropdownMenuItem>
-                                )}
+                                ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
                     </div>

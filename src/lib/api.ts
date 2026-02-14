@@ -202,7 +202,9 @@ export const api = {
 
             let cached: Paste | undefined;
             try {
-                cached = await getCachedPaste(slug) ?? undefined;
+                const raw = await getCachedPaste(slug) ?? undefined;
+                // Only use cache if it has full content (not just preview from list)
+                cached = raw?.content ? raw : undefined;
             } catch {
                 cached = undefined;
             }
