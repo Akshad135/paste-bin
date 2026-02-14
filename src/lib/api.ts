@@ -157,7 +157,8 @@ export const api = {
                     fetchWithTimeout<PasteListResponse>(`/paste?page=${page}&limit=${limit}`)
                         .then((fresh) => {
                             if (myFetchId === listFetchId && fresh && fresh.pastes) {
-                                cachePasteList(page, fresh).catch(() => { });
+                                const publicOnly = { ...fresh, pastes: fresh.pastes.filter(p => p.visibility === 'public') };
+                                cachePasteList(page, publicOnly).catch(() => { });
                                 cachePastesFromList(fresh.pastes).catch(() => { });
                                 onUpdate?.({ data: fresh, fromCache: false });
                             }
@@ -173,7 +174,8 @@ export const api = {
                 const fresh = await fetchWithTimeout<PasteListResponse>(`/paste?page=${page}&limit=${limit}`);
                 if (fresh && fresh.pastes) {
                     if (myFetchId === listFetchId) {
-                        cachePasteList(page, fresh).catch(() => { });
+                        const publicOnly = { ...fresh, pastes: fresh.pastes.filter(p => p.visibility === 'public') };
+                        cachePasteList(page, publicOnly).catch(() => { });
                         cachePastesFromList(fresh.pastes).catch(() => { });
                     }
                     return { data: fresh, fromCache: false };

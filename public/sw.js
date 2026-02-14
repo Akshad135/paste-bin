@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pastebin-v3';
+const CACHE_NAME = 'pastebin-v4';
 const STATIC_ASSETS = [
     '/',
     '/icon.svg',
@@ -34,19 +34,10 @@ self.addEventListener('fetch', (event) => {
     // Skip non-GET
     if (request.method !== 'GET') return;
 
-    // API GET requests — network-first, cache response for offline fallback
+    // API requests — skip SW caching entirely.
+    // Offline caching for paste data is handled by IndexedDB in the app layer,
+    // which filters out private pastes.
     if (url.pathname.startsWith('/api')) {
-        event.respondWith(
-            fetch(request)
-                .then((response) => {
-                    if (response.ok) {
-                        const clone = response.clone();
-                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-                    }
-                    return response;
-                })
-                .catch(() => caches.match(request))
-        );
         return;
     }
 

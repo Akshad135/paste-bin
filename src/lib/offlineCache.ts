@@ -58,6 +58,8 @@ export function getCachedPasteList(page: number): Promise<(PasteListResponse & {
 // --- Individual Pastes ---
 
 export function cachePaste(slug: string, paste: Paste): Promise<void> {
+    // Only cache public pastes — private pastes should not be stored offline
+    if (paste.visibility !== 'public') return Promise.resolve();
     return txPut('pastes', slug, { ...paste, cachedAt: Date.now() });
 }
 
@@ -72,7 +74,7 @@ export async function cachePastesFromList(pastes: Paste[]): Promise<void> {
         const db = await openDB();
         const tx = db.transaction('pastes', 'readwrite');
         const store = tx.objectStore('pastes');
-        for (const paste of pastes) {
+        for (const paste of pastes.filter(p => p.visibility === 'public')) {
             store.put({ ...paste, cachedAt: Date.now() }, paste.slug);
         }
         await new Promise<void>((resolve, reject) => {
