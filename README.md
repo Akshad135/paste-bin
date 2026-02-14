@@ -40,9 +40,13 @@ A self-hosted, private-first pastebin with syntax highlighting. Deploy on Cloudf
 
 Click the deploy button above, set your `AUTH_KEY` secret when prompted, and you're done. Cloudflare automatically creates the D1 database and runs migrations.
 
-Cloudflare D1's free tier gives you 500 MB of storage — enough for roughly **100,000 pastes** at ~5 KB each.
+<div align="center">
 
-<!-- TODO: Add Cloudflare deploy page screenshot -->
+![Cloudflare Deploy](public/cf-deploy.png)
+
+</div>
+
+Cloudflare D1's free tier gives you 500 MB of storage — enough for roughly **100,000 pastes** at ~5 KB each.
 
 ## Local Development
 
@@ -56,7 +60,7 @@ Cloudflare D1's free tier gives you 500 MB of storage — enough for roughly **1
 # Install dependencies
 bun install
 
-# Create env file (edit AUTH_KEY at minimum)
+# Set your auth passphrase (.env is gitignored)
 cp .env.example .env
 
 # Run local DB migration
@@ -77,35 +81,19 @@ Open `http://localhost:5173` — the frontend proxies API requests to the dev se
 .\setup.ps1
 ```
 
-## VPS / Self-Hosted
+## Configuration
 
-Build the frontend and serve with Cloudflare Workers, or adapt the Bun dev server for production:
+Branding is configured in [`config.yaml`](config.yaml) (committed to the repo). Edit it to customize your instance — app name, description, icons, etc.
 
-```bash
-bun install
-cp .env.example .env   # edit AUTH_KEY, branding, etc.
-bun run build           # outputs to dist/
-```
+Secrets like `AUTH_KEY` go in `.env` (gitignored) for local dev, or in Cloudflare dashboard secrets for production.
 
-Serve `dist/` with any static file server and run `bun run dev:api` (or adapt it) as the API backend behind a reverse proxy.
+| File | Purpose | Committed? |
+|------|---------|------------|
+| `config.yaml` | Branding, icons, app name | Yes |
+| `.env` | `AUTH_KEY` secret | No (gitignored) |
+| `.dev.vars` | Secrets for `wrangler dev` | No (gitignored) |
 
-## Environment Variables
-
-All branding is configurable via `.env`. See [`.env.example`](.env.example) for the full list.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `VITE_APP_NAME` | `pastebin` | Site name (navbar, tab title, PWA) |
-| `VITE_APP_NAME_ACCENT` | `bin` | Colored portion of navbar logo text |
-| `VITE_APP_DESCRIPTION` | *A simple, private-first…* | Meta description |
-| `VITE_FAVICON_URL` | `/favicon.svg` | Favicon path or URL |
-| `VITE_PWA_ICON_192` | `/icon-192.png` | PWA icon 192x192 |
-| `VITE_PWA_ICON_512` | `/icon-512.png` | PWA icon 512x512 |
-| `VITE_PWA_ICON_MASKABLE` | `/icon-maskable-512.png` | Maskable PWA icon |
-| `VITE_APPLE_TOUCH_ICON` | `/icon-192.png` | iOS home screen icon |
-| `AUTH_KEY` | *(required)* | Login passphrase (backend only) |
-
-> **Icons**: Drop your own images into `public/` and set the corresponding env var, or provide an external URL. The bundled ghost icon is used by default.
+> **Icons**: Drop your own images into `public/` and update `config.yaml`. The bundled ghost icon is used by default and adapts its color to the active theme.
 
 ## Tech Stack
 

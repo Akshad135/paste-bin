@@ -1,5 +1,7 @@
 import { config } from '@/lib/config';
 import { useState } from 'react';
+import { GhostIcon } from '@/components/GhostIcon';
+import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { useOffline } from '@/lib/offlineContext';
@@ -30,6 +32,10 @@ import { KeyIcon } from '@/components/ui/animated-key';
 import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
 import { toast } from 'sonner';
 
+// True when using the bundled ghost icon (not a custom one via env vars)
+const faviconEnv = import.meta.env.VITE_FAVICON_URL;
+const isDefaultIcon = !faviconEnv || faviconEnv === '/favicon.svg';
+
 export function Navbar() {
     const { isAuthenticated, logout, login } = useAuth();
     const { isEffectivelyOffline } = useOffline();
@@ -40,6 +46,9 @@ export function Navbar() {
     const [passphrase, setPassphrase] = useState('');
     const [loginError, setLoginError] = useState('');
     const [loginLoading, setLoginLoading] = useState(false);
+
+    // Dynamically update favicon color when using the default ghost icon
+    useDynamicFavicon(isDefaultIcon);
 
     const handleLogout = async () => {
         await logout();
@@ -77,7 +86,10 @@ export function Navbar() {
                         onClick={() => navigate('/')}
                         className="flex items-center gap-2 font-bold text-lg tracking-tight cursor-pointer"
                     >
-                        <img src={config.faviconUrl} alt="" className="h-6 w-6" />
+                        {isDefaultIcon
+                            ? <GhostIcon size={24} className="h-6 w-6 text-primary" />
+                            : <img src={config.faviconUrl} alt="" className="h-6 w-6" />
+                        }
                         <span>
                             {config.appNamePrefix}
                             <span className="text-primary">{config.appNameAccent}</span>
