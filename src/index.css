@@ -351,3 +351,12 @@
   tab-size: 2;
   resize: vertical;
 }
+
+/* ─── Sonner toasts ─── */
+.toast-success [data-icon] svg {
+  color: hsl(var(--primary)) !important;
+}
+
+.toast-error [data-icon] svg {
+  color: hsl(var(--destructive)) !important;
+}

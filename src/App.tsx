@@ -8,14 +8,33 @@ import { NewPaste } from '@/pages/NewPaste';
 import { EditPaste } from '@/pages/EditPaste';
 import { ViewPaste } from '@/pages/ViewPaste';
 
+function ThemedToaster() {
+  return (
+    <Toaster
+      position="bottom-center"
+      toastOptions={{
+        style: {
+          background: 'hsl(var(--card))',
+          color: 'hsl(var(--foreground))',
+          border: '1px solid hsl(var(--border))',
+        },
+        classNames: {
+          success: 'toast-success',
+          error: 'toast-error',
+        },
+      }}
+    />
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <div className="min-h-screen flex flex-col">
+          <div className="h-screen flex flex-col overflow-hidden">
             <Navbar />
-            <main className="flex-1">
+            <main className="flex-1 overflow-auto">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/new" element={<NewPaste />} />
@@ -24,7 +43,7 @@ function App() {
               </Routes>
             </main>
           </div>
-          <Toaster richColors position="bottom-right" />
+          <ThemedToaster />
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

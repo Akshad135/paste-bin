@@ -182,7 +182,7 @@ export function ViewPaste() {
     const lineCount = paste.content.split('\n').length;
 
     return (
-        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4 flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4 flex flex-col h-full box-border">
             {/* Header bar */}
             <div className="flex items-center gap-3 mb-3 shrink-0">
                 {/* Back button */}

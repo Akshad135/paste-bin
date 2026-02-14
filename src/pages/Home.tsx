@@ -112,7 +112,7 @@ export function Home() {
                 <>
                     <div
                         className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
-                        style={{ gridAutoRows: 'calc((100vh - 7rem) / 3)' }}
+                        style={{ gridAutoRows: 'calc((100vh - 7rem - 1px) / 3)' }}
                     >
                         {pastes.map((paste) => (
                             <PasteCard

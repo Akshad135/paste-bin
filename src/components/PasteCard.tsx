@@ -95,12 +95,12 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                         <h3 className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
                             {paste.title || paste.slug}
                         </h3>
-                        <Badge variant="default" className="text-[10px] px-1.5 py-0 shrink-0">
+                        <Badge variant="default" className="text-[10px] px-1.5 py-0.5 shrink-0">
                             {getLanguageLabel(paste.language)}
                         </Badge>
                         <Badge
                             variant={paste.visibility === 'public' ? 'secondary' : 'outline'}
-                            className="text-[10px] px-1.5 py-0 shrink-0"
+                            className="text-[10px] px-1.5 py-0.5 shrink-0"
                         >
                             {paste.visibility === 'public' ? 'public' : 'private'}
                         </Badge>
