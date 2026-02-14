@@ -1,8 +1,19 @@
-import { Card, CardBody, CardFooter, Chip, Button, addToast } from '@heroui/react';
 import { useNavigate } from 'react-router-dom';
 import type { Paste } from '@/lib/api';
 import { api } from '@/lib/api';
 import { getLanguageLabel, timeAgo } from '@/lib/constants';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreVertical, Copy, Link2, Pencil, Eye, EyeOff, Trash2, Clock } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface PasteCardProps {
     paste: Paste;
@@ -19,77 +30,116 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
         try {
             await api.paste.update(paste.slug, { visibility: newVisibility });
             onVisibilityChange?.(paste.slug, newVisibility);
-            addToast({ title: `Paste is now ${newVisibility}`, color: 'success' });
+            toast.success(`Paste is now ${newVisibility}`);
         } catch {
-            addToast({ title: 'Failed to update visibility', color: 'danger' });
+            toast.error('Failed to update visibility');
         }
     };
 
     const handleDelete = async () => {
-        if (!confirm('Delete this paste? This cannot be undone.')) return;
         try {
             await api.paste.delete(paste.slug);
             onDelete?.(paste.slug);
-            addToast({ title: 'Paste deleted', color: 'success' });
+            toast.success('Paste deleted');
         } catch {
-            addToast({ title: 'Failed to delete', color: 'danger' });
+            toast.error('Failed to delete');
         }
     };
 
+    const copyContent = async () => {
+        await navigator.clipboard.writeText(paste.content);
+        toast.success('Copied to clipboard!');
+    };
+
+    const shareLink = async () => {
+        const url = `${window.location.origin}/edit/${paste.slug}`;
+        await navigator.clipboard.writeText(url);
+        toast.success('Link copied!');
+    };
+
+    const rawContent = paste.content || (paste as any).preview || '';
+    const previewLines = rawContent.split('\n').slice(0, 6);
+    const preview = previewLines.join('\n');
+    const isTruncated = rawContent.split('\n').length > 6 || rawContent.length > 200;
+
     return (
-        <div
-            onClick={() => navigate(`/paste/${paste.slug}`)}
-            className="glass-card glow-hover transition-all duration-300 rounded-xl cursor-pointer"
+        <Card
+            className="group cursor-pointer transition-all duration-200 hover:shadow-lg hover:shadow-primary/5 hover:border-primary/30 border-border/60 h-full flex flex-col"
+            onClick={() => isAuthenticated && navigate(`/edit/${paste.slug}`)}
         >
-            <Card className="bg-transparent shadow-none">
-                <CardBody className="gap-2 p-4">
-                    <div className="flex items-start justify-between gap-2">
-                        <h3 className="text-base font-semibold truncate flex-1">
+            <CardContent className="p-4 space-y-3 flex-1 flex flex-col">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                        <h3 className="font-medium text-sm truncate text-foreground">
                             {paste.title || paste.slug}
                         </h3>
-                        <div className="flex gap-1.5 flex-shrink-0 items-center">
-                            <Chip size="sm" variant="flat" color="primary" className="text-xs">
+                        <div className="flex items-center gap-1.5 mt-1.5">
+                            <Badge variant="default" className="text-[11px] px-2 py-0">
                                 {getLanguageLabel(paste.language)}
-                            </Chip>
-                            {isAuthenticated && (
-                                <div
-                                    className="flex gap-1.5 items-center"
-                                    onClick={(e) => e.stopPropagation()}
-                                >
-                                    <Chip
-                                        size="sm"
-                                        variant="flat"
-                                        color={paste.visibility === 'public' ? 'success' : 'warning'}
-                                        className="text-xs cursor-pointer"
-                                        onClick={toggleVisibility}
-                                    >
-                                        {paste.visibility === 'public' ? 'public' : 'private'}
-                                    </Chip>
-                                    <Button
-                                        size="sm"
-                                        variant="light"
-                                        color="danger"
-                                        isIconOnly
-                                        className="min-w-6 w-6 h-6"
-                                        onPress={handleDelete}
-                                    >
-                                        x
-                                    </Button>
-                                </div>
-                            )}
+                            </Badge>
+                            <Badge
+                                variant={paste.visibility === 'public' ? 'secondary' : 'outline'}
+                                className="text-[11px] px-2 py-0"
+                            >
+                                {paste.visibility === 'public' ? 'public' : 'private'}
+                            </Badge>
                         </div>
                     </div>
-                    {paste.preview && (
-                        <pre className="text-sm text-default-500 font-mono truncate overflow-hidden leading-relaxed mt-1 max-h-12">
-                            {paste.preview}
-                        </pre>
-                    )}
-                </CardBody>
-                <CardFooter className="pt-0 px-4 pb-3 flex justify-between">
-                    <span className="text-xs text-default-400">{timeAgo(paste.created_at)}</span>
-                    <span className="text-xs text-default-500 font-mono">{paste.slug}</span>
-                </CardFooter>
-            </Card>
-        </div>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                            >
+                                <MoreVertical className="h-3.5 w-3.5" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                            <DropdownMenuItem onClick={copyContent}>
+                                <Copy className="h-3.5 w-3.5 mr-2 text-primary" /> Copy content
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={shareLink}>
+                                <Link2 className="h-3.5 w-3.5 mr-2 text-primary" /> Share link
+                            </DropdownMenuItem>
+                            {isAuthenticated && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => navigate(`/edit/${paste.slug}`)}>
+                                        <Pencil className="h-3.5 w-3.5 mr-2" /> Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={toggleVisibility}>
+                                        {paste.visibility === 'public'
+                                            ? <><EyeOff className="h-3.5 w-3.5 mr-2" /> Make private</>
+                                            : <><Eye className="h-3.5 w-3.5 mr-2" /> Make public</>
+                                        }
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+
+                {/* Code preview */}
+                <pre className="text-xs font-mono leading-relaxed rounded-md p-3 overflow-hidden max-h-36 bg-black/5 dark:bg-white/[0.06] text-foreground/70 border border-border/40">
+                    <code>{preview}{isTruncated ? '\n…' : ''}</code>
+                </pre>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-auto pt-2">
+                    <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3 text-primary/60" />
+                        {timeAgo(paste.created_at)}
+                    </span>
+                    <span className="font-mono opacity-60">{paste.slug}</span>
+                </div>
+            </CardContent>
+        </Card>
     );
 }

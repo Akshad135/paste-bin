@@ -1,19 +1,17 @@
 import { useState } from 'react';
-import {
-    Card,
-    CardBody,
-    Input,
-    Button,
-    Textarea,
-    Select,
-    SelectItem,
-    Switch,
-    addToast,
-} from '@heroui/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { LANGUAGES } from '@/lib/constants';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { ArrowLeft, Loader2, Globe, Lock } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function NewPaste() {
     const { isAuthenticated } = useAuth();
@@ -25,39 +23,34 @@ export function NewPaste() {
     const [loading, setLoading] = useState(false);
 
     if (!isAuthenticated) {
-        navigate('/login');
+        navigate('/');
         return null;
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!content.trim()) {
-            addToast({ title: 'Content is required', color: 'danger' });
+            toast.error('Content is required');
             return;
         }
-
         setLoading(true);
         try {
-            const result = await api.paste.create({
+            await api.paste.create({
                 title: title.trim(),
                 content,
                 language,
                 visibility: isPublic ? 'public' : 'private',
             });
-            addToast({ title: 'Paste created!', color: 'success' });
-            navigate(`/paste/${result.slug}`);
+            toast.success('Paste created!');
+            navigate('/');
         } catch (err) {
-            addToast({
-                title: err instanceof Error ? err.message : 'Failed to create paste',
-                color: 'danger',
-            });
+            toast.error(err instanceof Error ? err.message : 'Failed to create paste');
         } finally {
             setLoading(false);
         }
     };
 
-    // Handle tab key in textarea
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Tab') {
             e.preventDefault();
             const target = e.target as HTMLTextAreaElement;
@@ -66,7 +59,6 @@ export function NewPaste() {
             const value = target.value;
             const newValue = value.substring(0, start) + '  ' + value.substring(end);
             setContent(newValue);
-            // Set cursor position after the tab
             requestAnimationFrame(() => {
                 target.selectionStart = target.selectionEnd = start + 2;
             });
@@ -74,79 +66,79 @@ export function NewPaste() {
     };
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent mb-8">
-                New Paste
-            </h1>
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+            <div className="flex items-center gap-3 mb-6">
+                <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <h1 className="text-2xl font-bold tracking-tight">New Paste</h1>
+            </div>
 
             <form onSubmit={handleSubmit}>
-                <Card className="border border-divider bg-content1/50 backdrop-blur-sm">
-                    <CardBody className="gap-5 p-6">
-                        <div className="flex flex-col sm:flex-row gap-4">
-                            <Input
-                                label="Title"
-                                placeholder="Untitled paste"
-                                value={title}
-                                onValueChange={setTitle}
-                                variant="bordered"
-                                className="flex-1"
-                            />
-                            <Select
-                                label="Language"
-                                selectedKeys={[language]}
-                                onSelectionChange={(keys) => {
-                                    const value = Array.from(keys)[0] as string;
-                                    if (value) setLanguage(value);
-                                }}
-                                variant="bordered"
-                                className="sm:w-48"
-                            >
-                                {LANGUAGES.map((lang) => (
-                                    <SelectItem key={lang.value}>
-                                        {lang.label}
-                                    </SelectItem>
-                                ))}
-                            </Select>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Create a new snippet</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+                            <div className="space-y-2">
+                                <Label htmlFor="title">Title</Label>
+                                <Input
+                                    id="title"
+                                    placeholder="Untitled paste"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Language</Label>
+                                <Select value={language} onValueChange={setLanguage}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {LANGUAGES.map((lang) => (
+                                            <SelectItem key={lang.value} value={lang.value}>
+                                                {lang.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
-                        <Textarea
-                            label="Content"
-                            placeholder="Paste your code or text here..."
-                            value={content}
-                            onValueChange={setContent}
-                            variant="bordered"
-                            minRows={15}
-                            maxRows={40}
-                            classNames={{
-                                input: 'paste-editor',
-                            }}
-                            onKeyDown={handleKeyDown}
-                        />
+                        <div className="space-y-2">
+                            <Label htmlFor="content">Content</Label>
+                            <Textarea
+                                id="content"
+                                placeholder="Paste your code or text here..."
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className="paste-editor min-h-[320px]"
+                            />
+                        </div>
 
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between pt-2">
                             <div className="flex items-center gap-3">
                                 <Switch
-                                    isSelected={isPublic}
-                                    onValueChange={setIsPublic}
-                                    size="sm"
-                                    color="success"
+                                    checked={isPublic}
+                                    onCheckedChange={setIsPublic}
                                 />
-                                <span className="text-sm text-default-600">
-                                    {isPublic ? '🌍 Public — visible to everyone' : '🔒 Private — only you can see this'}
+                                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                    {isPublic ? (
+                                        <><Globe className="h-3.5 w-3.5 text-emerald-400" /> Public — visible to everyone</>
+                                    ) : (
+                                        <><Lock className="h-3.5 w-3.5 text-amber-400" /> Private — only you can see this</>
+                                    )}
                                 </span>
                             </div>
-
-                            <Button
-                                type="submit"
-                                color="primary"
-                                variant="shadow"
-                                size="lg"
-                                isLoading={loading}
-                            >
+                            <Button type="submit" disabled={loading}>
+                                {loading && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
                                 Create Paste
                             </Button>
                         </div>
-                    </CardBody>
+                    </CardContent>
                 </Card>
             </form>
         </div>

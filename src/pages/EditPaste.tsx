@@ -1,0 +1,258 @@
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '@/lib/auth';
+import { api, type Paste } from '@/lib/api';
+import { LANGUAGES } from '@/lib/constants';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+    DialogClose,
+} from '@/components/ui/dialog';
+import { ArrowLeft, Loader2, Globe, Lock, Trash2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+
+export function EditPaste() {
+    const { slug } = useParams<{ slug: string }>();
+    const { isAuthenticated } = useAuth();
+    const navigate = useNavigate();
+
+    const [paste, setPaste] = useState<Paste | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [deleteOpen, setDeleteOpen] = useState(false);
+
+    // Form state
+    const [title, setTitle] = useState('');
+    const [content, setContent] = useState('');
+    const [language, setLanguage] = useState('plaintext');
+    const [isPublic, setIsPublic] = useState(false);
+
+    useEffect(() => {
+        if (!isAuthenticated) {
+            navigate('/');
+            return;
+        }
+        if (!slug) return;
+        loadPaste();
+    }, [slug, isAuthenticated]);
+
+    const loadPaste = async () => {
+        setLoading(true);
+        setError('');
+        try {
+            const data = await api.paste.get(slug!);
+            setPaste(data.paste);
+            setTitle(data.paste.title || '');
+            setContent(data.paste.content);
+            setLanguage(data.paste.language || 'plaintext');
+            setIsPublic(data.paste.visibility === 'public');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load paste');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!content.trim()) {
+            toast.error('Content is required');
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.paste.update(slug!, {
+                title: title.trim(),
+                content,
+                language,
+                visibility: isPublic ? 'public' : 'private',
+            });
+            toast.success('Paste updated!');
+            navigate('/');
+        } catch (err) {
+            toast.error(err instanceof Error ? err.message : 'Failed to update paste');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        try {
+            await api.paste.delete(slug!);
+            toast.success('Paste deleted');
+            navigate('/');
+        } catch {
+            toast.error('Failed to delete');
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            const target = e.target as HTMLTextAreaElement;
+            const start = target.selectionStart;
+            const end = target.selectionEnd;
+            const value = target.value;
+            const newValue = value.substring(0, start) + '  ' + value.substring(end);
+            setContent(newValue);
+            requestAnimationFrame(() => {
+                target.selectionStart = target.selectionEnd = start + 2;
+            });
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 space-y-6">
+                <Skeleton className="h-8 w-48" />
+                <div className="rounded-lg border p-6 space-y-5">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-[320px] w-full" />
+                    <Skeleton className="h-10 w-32" />
+                </div>
+            </div>
+        );
+    }
+
+    if (error || !paste) {
+        return (
+            <div className="mx-auto max-w-3xl px-4 sm:px-6 py-20">
+                <div className="flex flex-col items-center text-center">
+                    <AlertCircle className="h-12 w-12 text-destructive mb-4" />
+                    <h2 className="text-lg font-semibold">{error || 'Paste not found'}</h2>
+                    <Button variant="outline" className="mt-4" onClick={() => navigate('/')}>
+                        Go Home
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10">
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <h1 className="text-2xl font-bold tracking-tight">Edit Paste</h1>
+                </div>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setDeleteOpen(true)}
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                    <Trash2 className="h-4 w-4 mr-1.5" />
+                    Delete
+                </Button>
+            </div>
+
+            <form onSubmit={handleSave}>
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-base">Edit snippet</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-5">
+                        <div className="grid gap-4 sm:grid-cols-[1fr_180px]">
+                            <div className="space-y-2">
+                                <Label htmlFor="title">Title</Label>
+                                <Input
+                                    id="title"
+                                    placeholder="Untitled paste"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Language</Label>
+                                <Select value={language} onValueChange={setLanguage}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {LANGUAGES.map((lang) => (
+                                            <SelectItem key={lang.value} value={lang.value}>
+                                                {lang.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="content">Content</Label>
+                            <Textarea
+                                id="content"
+                                placeholder="Paste your code or text here..."
+                                value={content}
+                                onChange={(e) => setContent(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                className="paste-editor min-h-[320px]"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2">
+                            <div className="flex items-center gap-3">
+                                <Switch
+                                    checked={isPublic}
+                                    onCheckedChange={setIsPublic}
+                                />
+                                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                                    {isPublic ? (
+                                        <><Globe className="h-3.5 w-3.5 text-emerald-400" /> Public</>
+                                    ) : (
+                                        <><Lock className="h-3.5 w-3.5 text-amber-400" /> Private</>
+                                    )}
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <Button variant="outline" type="button" onClick={() => navigate('/')} className="border-border/60 hover:border-border">
+                                    Cancel
+                                </Button>
+                                <Button type="submit" disabled={saving}>
+                                    {saving && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </form>
+
+            {/* Delete confirmation dialog */}
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete this paste?</DialogTitle>
+                        <DialogDescription>
+                            This action cannot be undone. The paste "{paste.title || paste.slug}" will be permanently deleted.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button variant="destructive" onClick={handleDelete}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    );
+}

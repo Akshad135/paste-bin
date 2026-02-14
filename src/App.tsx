@@ -1,37 +1,33 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { HeroUIProvider, ToastProvider } from '@heroui/react';
+import { Toaster } from 'sonner';
+import { ThemeProvider } from '@/components/ThemeProvider';
 import { AuthProvider } from '@/lib/auth';
 import { Navbar } from '@/components/Navbar';
 import { Home } from '@/pages/Home';
-import { Login } from '@/pages/Login';
 import { NewPaste } from '@/pages/NewPaste';
-import { ViewPaste } from '@/pages/ViewPaste';
+import { EditPaste } from '@/pages/EditPaste';
 
 function App() {
   return (
     <BrowserRouter>
-      <HeroUIProvider>
-        <ToastProvider placement="bottom-right" />
+      <ThemeProvider>
         <AuthProvider>
-          <div className="dark min-h-screen bg-background text-foreground">
+          <div className="min-h-screen flex flex-col">
             <Navbar />
-            <main className="pb-12">
+            <main className="flex-1 pb-12">
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
                 <Route path="/new" element={<NewPaste />} />
-                <Route path="/paste/:slug" element={<ViewPaste />} />
+                <Route path="/edit/:slug" element={<EditPaste />} />
               </Routes>
             </main>
-            {/* Footer */}
-            <footer className="border-t border-white/5 py-6 text-center text-sm text-default-400">
-              <p>
-                paste<span className="gradient-text font-semibold">bin</span> — private-first code sharing
-              </p>
+            <footer className="border-t border-border/40 py-5 text-center text-xs text-muted-foreground">
+              paste<span className="text-primary font-medium">bin</span> — private-first code sharing
             </footer>
           </div>
+          <Toaster richColors position="bottom-right" />
         </AuthProvider>
-      </HeroUIProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }
