@@ -158,7 +158,7 @@ async function handleListPastes(request: Request, env: Env, url: URL) {
             hasMore: offset + limit < (countResult?.total || 0),
         });
     } catch (err) {
-        console.error('Failed to list pastes:', err);
+        console.warn('[worker] Failed to list pastes:', err instanceof Error ? err.message : err);
         return json({ error: 'Failed to load pastes' }, 500);
     }
 }

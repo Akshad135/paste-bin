@@ -83,7 +83,7 @@ export function Home() {
                 hasLoadedOnce.current = true;
             } catch (err) {
                 if (cancelled) return;
-                console.error('Failed to load pastes:', err);
+                console.warn('[pastebin] Could not load pastes:', err instanceof Error ? err.message : err);
                 setError(err instanceof Error ? err.message : 'Failed to connect to server');
                 if (navigator.onLine) setBackendDown(true);
             } finally {

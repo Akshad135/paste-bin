@@ -110,7 +110,7 @@ export function ViewPaste() {
                 hasLoadedOnce.current = true;
             } catch (err) {
                 if (cancelled) return;
-                console.error('Failed to load paste:', err);
+                console.warn('[pastebin] Could not load paste:', err instanceof Error ? err.message : err);
                 setError(err instanceof Error ? err.message : 'Failed to load paste');
                 if (navigator.onLine) setBackendDown(true);
             } finally {

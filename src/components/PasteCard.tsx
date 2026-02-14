@@ -128,7 +128,7 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                                    className="h-6 w-6 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
                                 >
                                     <MenuIcon size={14} />
                                 </Button>
