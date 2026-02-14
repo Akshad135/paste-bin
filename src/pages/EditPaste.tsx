@@ -222,59 +222,95 @@ export function EditPaste() {
                             />
                         </div>
 
-                        <div className="flex items-center justify-between pt-2">
-                            <div className="flex items-center gap-3">
-                                <Switch
-                                    checked={isPinned}
-                                    onCheckedChange={setIsPinned}
-                                    id="pin-toggle"
-                                />
-                                <Label htmlFor="pin-toggle" className={cn("text-sm cursor-pointer select-none flex items-center gap-1.5", isPinned ? "text-primary font-medium" : "text-muted-foreground")}>
-                                    <PinIcon size={14} className={cn(isPinned && "rotate-45")} />
-                                    {isPinned ? 'Pinned to top' : 'Pin to top'}
-                                </Label>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-6 pt-6 mt-4 border-t border-border/40">
 
-                                <div className="h-4 w-px bg-border/60 mx-1" />
+                            {/* Settings Group */}
+                            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full sm:w-auto">
 
-                                <Switch
-                                    checked={isPublic}
-                                    onCheckedChange={setIsPublic}
-                                />
-                                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                                    {isPublic ? (
-                                        <><EarthIcon size={14} className="text-emerald-400" /> Public</>
-                                    ) : (
-                                        <><LockIcon size={14} className="text-amber-400" /> Private</>
-                                    )}
-                                </span>
+                                {/* Toggles Row */}
+                                <div className="flex items-center justify-center gap-6 w-full sm:w-auto">
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={isPinned}
+                                            onCheckedChange={setIsPinned}
+                                            id="pin-toggle"
+                                            className="scale-90"
+                                        />
+                                        <Label
+                                            htmlFor="pin-toggle"
+                                            className={cn(
+                                                "text-sm font-medium cursor-pointer select-none flex items-center gap-1.5 transition-colors",
+                                                isPinned ? "text-primary" : "text-muted-foreground"
+                                            )}
+                                        >
+                                            <PinIcon size={14} className={cn("transition-transform", isPinned && "rotate-45")} />
+                                            Pinned
+                                        </Label>
+                                    </div>
 
-                                <div className="h-4 w-px bg-border/60 mx-1" />
+                                    <div className="hidden sm:block h-4 w-px bg-border/60" />
 
-                                <HourglassIcon size={14} className="text-muted-foreground" />
-                                <Select value={expiresIn} onValueChange={setExpiresIn}>
-                                    <SelectTrigger className="w-[140px] h-8 text-xs">
-                                        <SelectValue placeholder={paste.expires_at && !isExpired(paste.expires_at) ? timeUntilExpiry(paste.expires_at) : paste.expires_at ? 'Expired' : 'Never'} />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {paste.expires_at && (
-                                            <SelectItem value="__current__">
-                                                {isExpired(paste.expires_at) ? 'Expired' : timeUntilExpiry(paste.expires_at)}
-                                            </SelectItem>
-                                        )}
-                                        {EXPIRATION_OPTIONS.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={isPublic}
+                                            onCheckedChange={setIsPublic}
+                                            id="public-toggle"
+                                            className="scale-90"
+                                        />
+                                        <Label
+                                            htmlFor="public-toggle"
+                                            className="text-sm font-medium cursor-pointer select-none flex items-center gap-1.5 text-muted-foreground min-w-[80px]"
+                                        >
+                                            {isPublic ? (
+                                                <><EarthIcon size={14} className="text-emerald-500" /> Public</>
+                                            ) : (
+                                                <><LockIcon size={14} className="text-amber-500" /> Private</>
+                                            )}
+                                        </Label>
+                                    </div>
+                                </div>
+
+                                <div className="hidden sm:block h-4 w-px bg-border/60" />
+
+                                {/* Expiration Row */}
+                                <div className="flex items-center gap-2">
+                                    <HourglassIcon size={14} className="text-muted-foreground shrink-0" />
+                                    <Select value={expiresIn} onValueChange={setExpiresIn}>
+                                        <SelectTrigger className="w-[120px] h-8 text-xs bg-transparent border-border/60 focus:ring-1 focus:ring-primary/20">
+                                            <SelectValue placeholder={paste.expires_at && !isExpired(paste.expires_at) ? timeUntilExpiry(paste.expires_at) : paste.expires_at ? 'Expired' : 'Never'} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {paste.expires_at && (
+                                                <SelectItem value="__current__">
+                                                    {isExpired(paste.expires_at) ? 'Expired' : timeUntilExpiry(paste.expires_at)}
+                                                </SelectItem>
+                                            )}
+                                            {EXPIRATION_OPTIONS.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" type="button" onClick={() => navigate('/')} className="border-border/60 hover:border-border">
+
+                            {/* Buttons */}
+                            <div className="grid grid-cols-2 gap-3 w-full sm:w-auto sm:flex sm:gap-2">
+                                <Button
+                                    variant="outline"
+                                    type="button"
+                                    onClick={() => navigate('/')}
+                                    className="h-10 sm:h-8 px-3 text-xs border-border/60 hover:border-border hover:bg-muted/50"
+                                >
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={saving}>
-                                    {saving && <LoaderPinwheelIcon size={16} className="mr-1.5 animate-spin" />}
+                                <Button
+                                    type="submit"
+                                    disabled={saving}
+                                    className="h-10 sm:h-8 px-4 text-xs font-medium"
+                                >
+                                    {saving && <LoaderPinwheelIcon size={14} className="mr-1.5 animate-spin" />}
                                     Save Changes
                                 </Button>
                             </div>

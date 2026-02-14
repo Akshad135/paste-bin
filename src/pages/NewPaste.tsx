@@ -125,38 +125,56 @@ export function NewPaste() {
                             />
                         </div>
 
-                        <div className="flex items-center justify-between pt-2">
-                            <div className="flex items-center gap-3">
-                                <Switch
-                                    checked={isPublic}
-                                    onCheckedChange={setIsPublic}
-                                />
-                                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                                    {isPublic ? (
-                                        <><EarthIcon size={14} className="text-emerald-400" /> Public</>
-                                    ) : (
-                                        <><LockIcon size={14} className="text-amber-400" /> Private</>
-                                    )}
-                                </span>
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-5 sm:gap-6 pt-6 mt-4 border-t border-border/40">
 
-                                <div className="h-4 w-px bg-border/60 mx-1" />
+                            {/* Settings Group */}
+                            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full sm:w-auto">
+                                <div className="flex items-center justify-center w-full sm:w-auto">
+                                    <div className="flex items-center gap-2">
+                                        <Switch
+                                            checked={isPublic}
+                                            onCheckedChange={setIsPublic}
+                                            id="public-toggle"
+                                            className="scale-90"
+                                        />
+                                        <Label
+                                            htmlFor="public-toggle"
+                                            className="text-sm font-medium cursor-pointer select-none flex items-center gap-1.5 text-muted-foreground min-w-[80px]"
+                                        >
+                                            {isPublic ? (
+                                                <><EarthIcon size={14} className="text-emerald-500" /> Public</>
+                                            ) : (
+                                                <><LockIcon size={14} className="text-amber-500" /> Private</>
+                                            )}
+                                        </Label>
+                                    </div>
+                                </div>
 
-                                <HourglassIcon size={14} className="text-muted-foreground" />
-                                <Select value={expiresIn} onValueChange={setExpiresIn}>
-                                    <SelectTrigger className="w-[130px] h-8 text-xs">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {EXPIRATION_OPTIONS.map((opt) => (
-                                            <SelectItem key={opt.value} value={opt.value}>
-                                                {opt.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <div className="hidden sm:block h-4 w-px bg-border/60" />
+
+                                <div className="flex items-center gap-2">
+                                    <HourglassIcon size={14} className="text-muted-foreground shrink-0" />
+                                    <Select value={expiresIn} onValueChange={setExpiresIn}>
+                                        <SelectTrigger className="w-[120px] h-8 text-xs bg-transparent border-border/60 focus:ring-1 focus:ring-primary/20">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {EXPIRATION_OPTIONS.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value}>
+                                                    {opt.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
-                            <Button type="submit" disabled={loading}>
-                                {loading && <LoaderPinwheelIcon size={16} className="mr-1.5 animate-spin" />}
+
+                            <Button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full sm:w-auto h-10 sm:h-8 text-xs font-medium min-w-[100px]"
+                            >
+                                {loading && <LoaderPinwheelIcon size={14} className="mr-1.5 animate-spin" />}
                                 Create Paste
                             </Button>
                         </div>

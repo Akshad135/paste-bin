@@ -285,10 +285,6 @@ export function ViewPaste() {
                             <PinIcon size={12} className="rotate-45" /> Pinned
                         </Badge>
                     )}
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <ClockIcon size={12} />
-                        {timeAgo(paste.created_at)}
-                    </span>
                     {paste.expires_at && !isExpired(paste.expires_at) && (
                         <Badge variant="outline" className="text-[11px] px-2 py-0.5 border-amber-500/50 text-amber-500 bg-amber-500/5 gap-1">
                             <HourglassIcon size={12} />
@@ -301,6 +297,10 @@ export function ViewPaste() {
                             />
                         </Badge>
                     )}
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <ClockIcon size={12} />
+                        {timeAgo(paste.created_at)}
+                    </span>
                     <span className="text-xs text-muted-foreground font-mono">
                         {paste.slug}
                     </span>
@@ -386,6 +386,18 @@ export function ViewPaste() {
                 >
                     {paste.visibility}
                 </Badge>
+                {paste.expires_at && !isExpired(paste.expires_at) && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-500 bg-amber-500/5 gap-1">
+                        <HourglassIcon size={10} />
+                        <ExpirationTimer
+                            expiresAt={paste.expires_at}
+                            onExpire={() => {
+                                toast.error('Paste expired');
+                                navigate('/');
+                            }}
+                        />
+                    </Badge>
+                )}
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                     <ClockIcon size={10} />
                     {timeAgo(paste.created_at)}
