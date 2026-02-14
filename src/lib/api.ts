@@ -9,6 +9,7 @@ export interface Paste {
     content: string;
     language: string;
     visibility: 'public' | 'private';
+    pinned: number;
     preview?: string;
     created_at: string;
     updated_at: string;
@@ -30,6 +31,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         const res = await fetch(`${API_BASE}${path}`, {
             ...options,
             signal: controller.signal,
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
                 ...options?.headers,
@@ -37,7 +39,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         });
         clearTimeout(id);
 
-        const data = await res.json();
+        let data: unknown;
+        try {
+            data = await res.json();
+        } catch {
+            throw new Error(`Server error (${res.status})`);
+        }
 
         if (!res.ok) {
             throw new Error((data as { error?: string }).error || 'Request failed');
@@ -46,7 +53,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
         return data as T;
     } catch (err) {
         clearTimeout(id);
-        throw err;
+        if (err instanceof Error) throw err;
+        throw new Error(String(err));
     }
 }
 
@@ -92,6 +100,12 @@ export const api = {
         delete: (slug: string) =>
             request<{ success: boolean }>(`/paste/${slug}`, {
                 method: 'DELETE',
+            }),
+
+        pin: (slug: string, pinned: boolean) =>
+            request<{ success: boolean }>(`/paste/${slug}`, {
+                method: 'PUT',
+                body: JSON.stringify({ pinned: pinned ? 1 : 0 }),
             }),
     },
 };

@@ -38,6 +38,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
             content?: string;
             language?: string;
             visibility?: 'public' | 'private';
+            pinned?: number;
         };
 
         const existing = await context.env.DB.prepare(
@@ -51,7 +52,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
         }
 
         const updates: string[] = [];
-        const values: (string | undefined)[] = [];
+        const values: any[] = [];
 
         if (body.title !== undefined) {
             updates.push('title = ?');
@@ -68,6 +69,10 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
         if (body.visibility !== undefined) {
             updates.push('visibility = ?');
             values.push(body.visibility);
+        }
+        if (body.pinned !== undefined) {
+            updates.push('pinned = ?');
+            values.push(body.pinned as any);
         }
 
         if (updates.length === 0) {

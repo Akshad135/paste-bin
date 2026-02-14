@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS pastes (
   content TEXT NOT NULL,
   language TEXT DEFAULT 'plaintext',
   visibility TEXT DEFAULT 'private' CHECK(visibility IN ('public', 'private')),
+  pinned INTEGER DEFAULT 0 CHECK(pinned IN (0, 1)),
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );

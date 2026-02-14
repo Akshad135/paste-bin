@@ -15,11 +15,11 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
         if (authenticated) {
             // Authenticated: show all pastes
-            query = 'SELECT id, slug, title, content, language, visibility, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ORDER BY created_at DESC LIMIT ? OFFSET ?';
+            query = 'SELECT id, slug, title, content, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?';
             countQuery = 'SELECT COUNT(*) as total FROM pastes';
         } else {
             // Public: show only public pastes
-            query = "SELECT id, slug, title, content, language, visibility, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes WHERE visibility = 'public' ORDER BY created_at DESC LIMIT ? OFFSET ?";
+            query = "SELECT id, slug, title, content, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes WHERE visibility = 'public' ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?";
             countQuery = "SELECT COUNT(*) as total FROM pastes WHERE visibility = 'public'";
         }
 

@@ -30,17 +30,20 @@ import { SquarePenIcon } from '@/components/ui/animated-square-pen';
 import { EyeIcon } from '@/components/ui/animated-eye';
 import { EyeOffIcon } from '@/components/ui/animated-eye-off';
 import { DeleteIcon } from '@/components/ui/animated-delete';
+
 import { ClockIcon } from '@/components/ui/animated-clock';
+import { PinIcon } from '@/components/ui/animated-pin';
 import { toast } from 'sonner';
 
 interface PasteCardProps {
     paste: Paste;
     isAuthenticated?: boolean;
     onVisibilityChange?: (slug: string, newVisibility: 'public' | 'private') => void;
+    onPinChange?: (slug: string, pinned: boolean) => void;
     onDelete?: (slug: string) => void;
 }
 
-export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, onDelete }: PasteCardProps) {
+export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, onPinChange, onDelete }: PasteCardProps) {
     const navigate = useNavigate();
     const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -52,6 +55,19 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
             toast.success(`Paste is now ${newVisibility}`);
         } catch {
             toast.error('Failed to update visibility');
+        }
+    };
+
+    const togglePin = async (e?: React.MouseEvent) => {
+        e?.stopPropagation();
+        const newPinned = !paste.pinned;
+        try {
+            await api.paste.pin(paste.slug, newPinned);
+            onPinChange?.(paste.slug, newPinned);
+            toast.success(newPinned ? 'Paste pinned' : 'Paste unpinned');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to update pin status';
+            toast.error(message);
         }
     };
 
@@ -76,7 +92,7 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
     };
 
     const shareLink = async () => {
-        const url = `${window.location.origin}/edit/${paste.slug}`;
+        const url = `${window.location.origin}/paste/${paste.slug}`;
         await navigator.clipboard.writeText(url);
         toast.success('Link copied!');
     };
@@ -92,6 +108,9 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                 <CardContent className="p-3 gap-2 flex-1 flex flex-col">
                     {/* Header: title + badges + menu all in one row */}
                     <div className="flex items-center gap-1.5">
+                        {paste.pinned === 1 && (
+                            <PinIcon size={14} className="text-primary shrink-0 rotate-45" />
+                        )}
                         <h3 className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
                             {paste.title || paste.slug}
                         </h3>
@@ -132,6 +151,10 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                                                 ? <><EyeOffIcon size={14} className="mr-2" /> Make private</>
                                                 : <><EyeIcon size={14} className="mr-2" /> Make public</>
                                             }
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => togglePin()}>
+                                            <PinIcon size={14} className="mr-2" />
+                                            {paste.pinned ? 'Unpin' : 'Pin'}
                                         </DropdownMenuItem>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem

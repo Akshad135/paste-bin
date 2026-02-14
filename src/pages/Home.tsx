@@ -57,6 +57,17 @@ export function Home() {
         setPastes((prev) => prev.filter((p) => p.slug !== slug));
     };
 
+    const handlePinChange = (slug: string, pinned: boolean) => {
+        setPastes((prev) => {
+            const updated = prev.map((p) => (p.slug === slug ? { ...p, pinned: pinned ? 1 : 0 } : p));
+            // Re-sort: pinned first, then by created_at desc
+            return updated.sort((a, b) => {
+                if (a.pinned !== b.pinned) return b.pinned - a.pinned;
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+        });
+    };
+
     return (
         <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4">
             {/* Content */}
@@ -120,6 +131,7 @@ export function Home() {
                                 paste={paste}
                                 isAuthenticated={isAuthenticated}
                                 onVisibilityChange={handleVisibilityChange}
+                                onPinChange={handlePinChange}
                                 onDelete={handleDelete}
                             />
                         ))}

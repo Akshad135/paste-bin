@@ -4,6 +4,7 @@ import { codeToHtml } from 'shiki';
 import { api, type Paste } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { getLanguageLabel, timeAgo } from '@/lib/constants';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +16,7 @@ import { SquarePenIcon } from '@/components/ui/animated-square-pen';
 import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
 import { ClockIcon } from '@/components/ui/animated-clock';
 import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
+import { PinIcon } from '@/components/ui/animated-pin';
 import { toast } from 'sonner';
 
 // Map language values to shiki identifiers
@@ -140,6 +142,19 @@ export function ViewPaste() {
         window.open(url, '_blank');
     };
 
+    const togglePin = async () => {
+        if (!paste) return;
+        const newPinned = !paste.pinned;
+        try {
+            await api.paste.pin(paste.slug, newPinned);
+            setPaste({ ...paste, pinned: newPinned ? 1 : 0 });
+            toast.success(newPinned ? 'Paste pinned' : 'Paste unpinned');
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Failed to update pin status';
+            toast.error(message);
+        }
+    };
+
     // Loading state
     if (loading) {
         return (
@@ -213,6 +228,11 @@ export function ViewPaste() {
                     >
                         {paste.visibility}
                     </Badge>
+                    {paste.pinned === 1 && (
+                        <Badge variant="outline" className="text-[11px] px-2 py-0.5 border-primary/50 text-primary bg-primary/5 gap-1">
+                            <PinIcon size={12} className="rotate-45" /> Pinned
+                        </Badge>
+                    )}
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <ClockIcon size={12} />
                         {timeAgo(paste.created_at)}
@@ -264,15 +284,29 @@ export function ViewPaste() {
                         <DownloadIcon size={16} />
                     </Button>
                     {isAuthenticated && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                            onClick={() => navigate(`/edit/${paste.slug}`)}
-                            title="Edit"
-                        >
-                            <SquarePenIcon size={16} />
-                        </Button>
+                        <>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                    "h-8 w-8 text-muted-foreground hover:text-foreground",
+                                    paste.pinned && "text-primary hover:text-primary"
+                                )}
+                                onClick={togglePin}
+                                title={paste.pinned ? "Unpin" : "Pin"}
+                            >
+                                <PinIcon size={16} className={cn(paste.pinned && "fill-current rotate-45")} />
+                            </Button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                onClick={() => navigate(`/edit/${paste.slug}`)}
+                                title="Edit"
+                            >
+                                <SquarePenIcon size={16} />
+                            </Button>
+                        </>
                     )}
                 </div>
             </div>

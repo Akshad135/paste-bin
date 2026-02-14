@@ -26,6 +26,8 @@ import { LockIcon } from '@/components/ui/animated-lock';
 import { DeleteIcon } from '@/components/ui/animated-delete';
 import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
 import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
+import { PinIcon } from '@/components/ui/animated-pin';
+import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
 export function EditPaste() {
@@ -44,6 +46,7 @@ export function EditPaste() {
     const [content, setContent] = useState('');
     const [language, setLanguage] = useState('plaintext');
     const [isPublic, setIsPublic] = useState(false);
+    const [isPinned, setIsPinned] = useState(false);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -64,6 +67,7 @@ export function EditPaste() {
             setContent(data.paste.content);
             setLanguage(data.paste.language || 'plaintext');
             setIsPublic(data.paste.visibility === 'public');
+            setIsPinned(data.paste.pinned === 1);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load paste');
         } finally {
@@ -84,6 +88,7 @@ export function EditPaste() {
                 content,
                 language,
                 visibility: isPublic ? 'public' : 'private',
+                pinned: isPinned ? 1 : 0,
             });
             toast.success('Paste updated!');
             navigate('/');
@@ -213,6 +218,18 @@ export function EditPaste() {
 
                         <div className="flex items-center justify-between pt-2">
                             <div className="flex items-center gap-3">
+                                <Switch
+                                    checked={isPinned}
+                                    onCheckedChange={setIsPinned}
+                                    id="pin-toggle"
+                                />
+                                <Label htmlFor="pin-toggle" className={cn("text-sm cursor-pointer select-none flex items-center gap-1.5", isPinned ? "text-primary font-medium" : "text-muted-foreground")}>
+                                    <PinIcon size={14} className={cn(isPinned && "rotate-45")} />
+                                    {isPinned ? 'Pinned to top' : 'Pin to top'}
+                                </Label>
+
+                                <div className="h-4 w-px bg-border/60 mx-1" />
+
                                 <Switch
                                     checked={isPublic}
                                     onCheckedChange={setIsPublic}

@@ -76,32 +76,32 @@ function clearCookie(): string {
 // Slug generator  (mirrors functions/lib/slugs.ts)
 // ---------------------------------------------------------------------------
 const adjectives = [
-  "autumn","hidden","bitter","misty","silent","empty","dry","dark","summer",
-  "icy","quiet","white","cool","spring","winter","crimson","broken","bold",
-  "polished","purple","frosty","wild","black","young","holy","solitary",
-  "fragrant","aged","snowy","proud","floral","green","golden","rapid","calm",
-  "damp","morning","rough","still","small","sparkling","wandering","ancient",
-  "twilight","long","lingering","bold","little","celestial","weathered","blue",
-  "lively","restless","cold","sleepy","shrill","falling","patient","gentle",
-  "lucky","orange","shy","muddy","scarlet","floating","singing","rustic",
-  "swift","clever","bright","cosmic","velvet","crystal","amber","silver",
+  "autumn", "hidden", "bitter", "misty", "silent", "empty", "dry", "dark", "summer",
+  "icy", "quiet", "white", "cool", "spring", "winter", "crimson", "broken", "bold",
+  "polished", "purple", "frosty", "wild", "black", "young", "holy", "solitary",
+  "fragrant", "aged", "snowy", "proud", "floral", "green", "golden", "rapid", "calm",
+  "damp", "morning", "rough", "still", "small", "sparkling", "wandering", "ancient",
+  "twilight", "long", "lingering", "bold", "little", "celestial", "weathered", "blue",
+  "lively", "restless", "cold", "sleepy", "shrill", "falling", "patient", "gentle",
+  "lucky", "orange", "shy", "muddy", "scarlet", "floating", "singing", "rustic",
+  "swift", "clever", "bright", "cosmic", "velvet", "crystal", "amber", "silver",
 ];
 const nouns = [
-  "waterfall","river","breeze","moon","rain","wind","sea","morning","snow",
-  "lake","sunset","pine","shadow","leaf","dawn","forest","hill","cloud",
-  "meadow","sun","glade","bird","brook","butterfly","bush","dew","dust",
-  "field","fire","flower","firefly","feather","grass","haze","mountain",
-  "night","pond","darkness","snowflake","silence","sound","sky","shape",
-  "surf","thunder","violet","water","wildflower","wave","resonance","dream",
-  "cherry","tree","fog","frost","star","paper","stone","smoke","frog",
-  "glitter","pebble","flame","ocean","canyon","harbor","reef","riddle",
-  "echo","orbit",
+  "waterfall", "river", "breeze", "moon", "rain", "wind", "sea", "morning", "snow",
+  "lake", "sunset", "pine", "shadow", "leaf", "dawn", "forest", "hill", "cloud",
+  "meadow", "sun", "glade", "bird", "brook", "butterfly", "bush", "dew", "dust",
+  "field", "fire", "flower", "firefly", "feather", "grass", "haze", "mountain",
+  "night", "pond", "darkness", "snowflake", "silence", "sound", "sky", "shape",
+  "surf", "thunder", "violet", "water", "wildflower", "wave", "resonance", "dream",
+  "cherry", "tree", "fog", "frost", "star", "paper", "stone", "smoke", "frog",
+  "glitter", "pebble", "flame", "ocean", "canyon", "harbor", "reef", "riddle",
+  "echo", "orbit",
 ];
 const verbs = [
-  "drifts","falls","rises","sings","rests","flies","grows","shines","flows",
-  "glows","hums","fades","leaps","swirls","blooms","sparks","floats",
-  "whispers","dances","wanders","rolls","turns","bends","reaches","stands",
-  "lingers","dreams","breaks","echoes","runs",
+  "drifts", "falls", "rises", "sings", "rests", "flies", "grows", "shines", "flows",
+  "glows", "hums", "fades", "leaps", "swirls", "blooms", "sparks", "floats",
+  "whispers", "dances", "wanders", "rolls", "turns", "bends", "reaches", "stands",
+  "lingers", "dreams", "breaks", "echoes", "runs",
 ];
 const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
 const generateSlug = () => `${pick(adjectives)}-${pick(nouns)}-${pick(verbs)}`;
@@ -159,7 +159,7 @@ function handleListPastes(req: Request) {
 
     const pastes = db
       .query(
-        `SELECT id, slug, title, language, visibility, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+        `SELECT id, slug, title, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ${whereClause} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?`
       )
       .all(limit, offset);
 
@@ -234,26 +234,29 @@ async function handleUpdatePaste(req: Request, slug: string) {
       content?: string;
       language?: string;
       visibility?: "public" | "private";
+      pinned?: number;
     };
 
     const existing = db.query("SELECT id FROM pastes WHERE slug = ?").get(slug);
     if (!existing) return json({ error: "Paste not found" }, 404);
 
     const updates: string[] = [];
-    const values: (string | undefined)[] = [];
+    const values: (string | number | undefined)[] = [];
 
     if (body.title !== undefined) { updates.push("title = ?"); values.push(body.title); }
     if (body.content !== undefined) { updates.push("content = ?"); values.push(body.content); }
     if (body.language !== undefined) { updates.push("language = ?"); values.push(body.language); }
     if (body.visibility !== undefined) { updates.push("visibility = ?"); values.push(body.visibility); }
+    if (body.pinned !== undefined) { updates.push("pinned = ?"); values.push(body.pinned); }
 
     if (updates.length === 0) return json({ error: "No fields to update" }, 400);
 
     updates.push("updated_at = datetime('now')");
 
-    db.query(`UPDATE pastes SET ${updates.join(", ")} WHERE slug = ?`).run(...values, slug);
+    db.query(`UPDATE pastes SET ${updates.join(", ")} WHERE slug = ?`).run(...(values as any[]), slug);
     return json({ success: true });
-  } catch {
+  } catch (err) {
+    console.error("Failed to update paste:", err);
     return json({ error: "Invalid request" }, 400);
   }
 }
@@ -294,19 +297,19 @@ async function router(req: Request): Promise<Response> {
   if (path === "/api/ping") {
     res = handlePing();
 
-  // /api/auth/login
+    // /api/auth/login
   } else if (path === "/api/auth/login") {
     res = method === "POST" ? await handleLogin(req) : handleAuthCheck(req);
 
-  // /api/auth/logout
+    // /api/auth/logout
   } else if (path === "/api/auth/logout" && method === "POST") {
     res = handleLogout();
 
-  // /api/paste  (list / create)
+    // /api/paste  (list / create)
   } else if (path === "/api/paste" || path === "/api/paste/") {
     res = method === "POST" ? await handleCreatePaste(req) : handleListPastes(req);
 
-  // /api/paste/:slug
+    // /api/paste/:slug
   } else if (path.startsWith("/api/paste/")) {
     const slug = path.replace("/api/paste/", "").replace(/\/$/, "");
     if (!slug) {
