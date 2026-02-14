@@ -398,13 +398,19 @@
 
 /* ─── Code blocks (shiki) ─── */
 .shiki {
-  padding: 1.25rem;
+  padding: 0.5rem;
   border-radius: 0.75rem;
   overflow-x: auto;
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
   font-size: 0.85rem;
   line-height: 1.7;
   tab-size: 2;
+}
+
+@media (min-width: 640px) {
+  .shiki {
+    padding: 1.25rem;
+  }
 }
 
 .shiki code {
@@ -415,11 +421,18 @@
   counter-increment: line;
   content: counter(line);
   display: inline-block;
-  width: 2rem;
-  margin-right: 1rem;
+  width: 1.25rem;
+  margin-right: 0.35rem;
   text-align: right;
   color: hsl(var(--muted-foreground) / 0.4);
   user-select: none;
+}
+
+@media (min-width: 640px) {
+  .shiki code>.line::before {
+    width: 2rem;
+    margin-right: 1rem;
+  }
 }
 
 /* ─── Card code preview (compact) ─── */
@@ -453,11 +466,17 @@
 }
 
 .code-view-full .shiki {
-  padding: 1.25rem;
+  padding: 0.5rem;
   font-size: 0.875rem;
   line-height: 1.7;
   flex: 1;
   background: rgba(0, 0, 0, 0.03) !important;
+}
+
+@media (min-width: 640px) {
+  .code-view-full .shiki {
+    padding: 1.25rem;
+  }
 }
 
 .dark .code-view-full .shiki {

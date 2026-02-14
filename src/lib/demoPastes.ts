@@ -1,16 +1,16 @@
 
 export interface Paste {
-    id: number;
-    slug: string;
-    title: string;
-    content: string;
-    language: string;
-    visibility: 'public' | 'private';
-    pinned: number;
-    preview?: string;
-    expires_at: string | null;
-    created_at: string;
-    updated_at: string;
+  id: number;
+  slug: string;
+  title: string;
+  content: string;
+  language: string;
+  visibility: 'public' | 'private';
+  pinned: number;
+  preview?: string;
+  expires_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 const now = new Date();
@@ -22,38 +22,38 @@ const NOW = formatDate(now);
 const FUTURE_EXPIRY = formatDate(future);
 
 export const DEMO_PASTES: Paste[] = [
-    // 1. Pinned - Edgy Humor (Fake Keys)
-    {
-        id: 1,
-        slug: 'claude-keys-exposed',
-        title: "claude_api_keys.txt",
-        language: "text",
-        visibility: "public",
-        pinned: 1,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: 'sk-ant-api03-Md8...',
-        content: `sk-ant-api03-Md8...7d9s-8d7f6g5h4j3k2l1
+  // 1. Pinned - Edgy Humor (Fake Keys)
+  {
+    id: 1,
+    slug: 'claude-keys-exposed',
+    title: "claude_api_keys.txt",
+    language: "plaintext",
+    visibility: "public",
+    pinned: 1,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: 'sk-ant-api03-Md8...',
+    content: `sk-ant-api03-Md8...7d9s-8d7f6g5h4j3k2l1
 sk-ant-api03-Kp2...9a8s-1d2f3g4h5j6k7l8
 # DO NOT SHARE THESE KEYS!!
 # usage: export CLAUDE_API_KEY=...
 # for akshad135's internal use only`,
-    },
+  },
 
-    // 2. Pinned - Edgy Humor (Fake DB)
-    {
-        id: 2,
-        slug: 'prod-db-credentials',
-        title: "prod_db_config.json",
-        language: "json",
-        visibility: "public",
-        pinned: 1,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '{\n  "host": "production-db.cluster-ro-...",\n  "port": 5432...',
-        content: `{
+  // 2. Pinned - Edgy Humor (Fake DB)
+  {
+    id: 2,
+    slug: 'prod-db-credentials',
+    title: "prod_db_config.json",
+    language: "json",
+    visibility: "public",
+    pinned: 1,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '{\n  "host": "production-db.cluster-ro-...",\n  "port": 5432...',
+    content: `{
   "host": "production-db.cluster-ro-akshad135.us-east-1.rds.amazonaws.com",
   "port": 5432,
   "database": "users_prod",
@@ -65,21 +65,21 @@ sk-ant-api03-Kp2...9a8s-1d2f3g4h5j6k7l8
     "max": 10
   }
 }`,
-    },
+  },
 
-    // 3. Pinned - Proper (Dotfiles)
-    {
-        id: 3,
-        slug: 'dotfiles-setup',
-        title: "dotfiles/README.md",
-        language: "markdown",
-        visibility: "public",
-        pinned: 1,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '# My Dotfiles\n\nAutomated setup key for my development environment...',
-        content: `# My Dotfiles
+  // 3. Pinned - Proper (Dotfiles)
+  {
+    id: 3,
+    slug: 'dotfiles-setup',
+    title: "dotfiles/README.md",
+    language: "markdown",
+    visibility: "public",
+    pinned: 1,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '# My Dotfiles\n\nAutomated setup key for my development environment...',
+    content: `# My Dotfiles
 
 Automated setup key for my development environment.
 
@@ -102,21 +102,21 @@ cd dotfiles
 
 - Linux/macOS
 - Nerd Fonts patched terminal`,
-    },
+  },
 
-    // 4. Pinned - Proper (Competitive Programming)
-    {
-        id: 4,
-        slug: 'cp-template-cpp',
-        title: "algo_template.cpp",
-        language: "cpp",
-        visibility: "public",
-        pinned: 1,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '#include <bits/stdc++.h>\nusing namespace std;\n\ntypedef long long ll;...',
-        content: `#include <bits/stdc++.h>
+  // 4. Pinned - Proper (Competitive Programming)
+  {
+    id: 4,
+    slug: 'cp-template-cpp',
+    title: "algo_template.cpp",
+    language: "cpp",
+    visibility: "public",
+    pinned: 1,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '#include <bits/stdc++.h>\nusing namespace std;\n\ntypedef long long ll;...',
+    content: `#include <bits/stdc++.h>
 using namespace std;
 
 typedef long long ll;
@@ -154,21 +154,21 @@ int main() {
     }
     return 0;
 }`,
-    },
+  },
 
-    // 5. Proper - TypeScript
-    {
-        id: 5,
-        slug: 'stripe-webhook-handler',
-        title: "stripe_webhook.ts",
-        language: "typescript",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: FUTURE_EXPIRY,
-        preview: 'import Stripe from "stripe";\nimport { buffer } from "micro";...',
-        content: `import Stripe from "stripe";
+  // 5. Proper - TypeScript
+  {
+    id: 5,
+    slug: 'stripe-webhook-handler',
+    title: "stripe_webhook.ts",
+    language: "typescript",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: FUTURE_EXPIRY,
+    preview: 'import Stripe from "stripe";\nimport { buffer } from "micro";...',
+    content: `import Stripe from "stripe";
 import { buffer } from "micro";
 import { NextApiRequest, NextApiResponse } from "next";
 
@@ -219,21 +219,21 @@ export default async function handler(
     res.status(405).end("Method Not Allowed");
   }
 }`,
-    },
+  },
 
-    // 6. Proper - Python
-    {
-        id: 6,
-        slug: 'django-settings-base',
-        title: "settings.py",
-        language: "python",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: 'import os\nfrom pathlib import Path\n\nBASE_DIR = Path(__file__).resolve().parent.parent...',
-        content: `import os
+  // 6. Proper - Python
+  {
+    id: 6,
+    slug: 'django-settings-base',
+    title: "settings.py",
+    language: "python",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: 'import os\nfrom pathlib import Path\n\nBASE_DIR = Path(__file__).resolve().parent.parent...',
+    content: `import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -268,21 +268,21 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 
 WSGI_APPLICATION = "config.wsgi.application"`,
-    },
+  },
 
-    // 7. Proper - Nginx
-    {
-        id: 7,
-        slug: 'nginx-reverse-proxy',
-        title: "nginx.conf",
-        language: "nginx",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: 'server {\n    listen 80;\n    server_name api.example.com;\n...',
-        content: `server {
+  // 7. Proper - Nginx
+  {
+    id: 7,
+    slug: 'nginx-reverse-proxy',
+    title: "nginx.conf",
+    language: "nginx",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: 'server {\n    listen 80;\n    server_name api.example.com;\n...',
+    content: `server {
     listen 80;
     server_name api.example.com;
     return 301 https://$host$request_uri;
@@ -308,21 +308,21 @@ server {
         add_header X-XSS-Protection "1; mode=block";
     }
 }`,
-    },
+  },
 
-    // 8. Proper - YAML
-    {
-        id: 8,
-        slug: 'docker-compose-stack',
-        title: "docker-compose.yml",
-        language: "yaml",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: FUTURE_EXPIRY,
-        preview: 'version: "3.8"\n\nservices:\n  app:\n    build: .\n    ports: ...',
-        content: `version: "3.8"
+  // 8. Proper - YAML
+  {
+    id: 8,
+    slug: 'docker-compose-stack',
+    title: "docker-compose.yml",
+    language: "yaml",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: FUTURE_EXPIRY,
+    preview: 'version: "3.8"\n\nservices:\n  app:\n    build: .\n    ports: ...',
+    content: `version: "3.8"
 
 services:
   app:
@@ -357,21 +357,21 @@ services:
 
 volumes:
   postgres_data:`,
-    },
+  },
 
-    // 9. Proper - Log
-    {
-        id: 9,
-        slug: 'cargo-build-failure',
-        title: "cargo-build.log",
-        language: "text", // closest to log
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: 'error[E0382]: use of moved value: `content`\n  --> src/main.rs:42:20...',
-        content: `error[E0382]: use of moved value: \`content\`
+  // 9. Proper - Log
+  {
+    id: 9,
+    slug: 'cargo-build-failure',
+    title: "cargo-build.log",
+    language: "plaintext", // closest to log
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: 'error[E0382]: use of moved value: `content`\n  --> src/main.rs:42:20...',
+    content: `error[E0382]: use of moved value: \`content\`
   --> src/main.rs:42:20
    |
 35 |     let content = String::from("hello");
@@ -391,21 +391,21 @@ error: aborting due to previous error
 
 For more information about this error, try \`rustc --explain E0382\`.
 error: could not compile \`paste-bin\` due to previous error`,
-    },
+  },
 
-    // 10. Proper - GraphQL
-    {
-        id: 10,
-        slug: 'graphql-schema-def',
-        title: "schema.graphql",
-        language: "graphql",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: 'type User {\n  id: ID!\n  username: String!\n  email: String!\n...',
-        content: `type User {
+  // 10. Proper - GraphQL
+  {
+    id: 10,
+    slug: 'graphql-schema-def',
+    title: "schema.graphql",
+    language: "graphql",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: 'type User {\n  id: ID!\n  username: String!\n  email: String!\n...',
+    content: `type User {
   id: ID!
   username: String!
   email: String!
@@ -445,21 +445,21 @@ schema {
   query: Query
   mutation: Mutation
 }`,
-    },
+  },
 
-    // 11. Proper - Solidity
-    {
-        id: 11,
-        slug: 'eth-payment-contract',
-        title: "PaymentChannel.sol",
-        language: "solidity",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract SimplePaymentChannel...',
-        content: `// SPDX-License-Identifier: MIT
+  // 11. Proper - Solidity
+  {
+    id: 11,
+    slug: 'eth-payment-contract',
+    title: "PaymentChannel.sol",
+    language: "solidity",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract SimplePaymentChannel...',
+    content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
 contract SimplePaymentChannel {
@@ -503,21 +503,21 @@ contract SimplePaymentChannel {
     
     // Internal helper functions omitted for brevity
 }`,
-    },
+  },
 
-    // 12. Edgy - Kernel Panic
-    {
-        id: 12,
-        slug: 'sysadmin-nightmare',
-        title: "kernel_panic.txt",
-        language: "text",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: 'Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)...',
-        content: `Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)
+  // 12. Edgy - Kernel Panic
+  {
+    id: 12,
+    slug: 'sysadmin-nightmare',
+    title: "kernel_panic.txt",
+    language: "plaintext",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: 'Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)...',
+    content: `Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)
 CPU: 0 PID: 1 Comm: swapper/0 Not tainted 5.15.0-76-generic #83-Ubuntu
 Hardware name: QEMU Standard PC (i440FX + PIIX, 1996), BIOS 1.13.0-1ubuntu1.1 04/01/2014
 Call Trace:
@@ -535,21 +535,21 @@ Call Trace:
  </TASK>
 Kernel Offset: 0x36000000 from 0xffffffff81000000 (relocation range: 0xffffffff80000000-0xffffffffbfffffff)
 ---[ end Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0) ]---`,
-    },
+  },
 
-    // 13. Edgy - CSS Hack
-    {
-        id: 13,
-        slug: 'css-is-awesome',
-        title: "weird_hacks.css",
-        language: "css",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '/* Do not touch this file unless you want to break IE11 support */\n\n* { box-sizing: border-box; }...',
-        content: `/* Do not touch this file unless you want to break IE11 support */
+  // 13. Edgy - CSS Hack
+  {
+    id: 13,
+    slug: 'css-is-awesome',
+    title: "weird_hacks.css",
+    language: "css",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '/* Do not touch this file unless you want to break IE11 support */\n\n* { box-sizing: border-box; }...',
+    content: `/* Do not touch this file unless you want to break IE11 support */
 
 * { box-sizing: border-box; }
 
@@ -590,21 +590,21 @@ Kernel Offset: 0x36000000 from 0xffffffff81000000 (relocation range: 0xffffffff8
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.1);
 }`,
-    },
+  },
 
-    // 14. Proper - Assembly
-    {
-        id: 14,
-        slug: 'mbr-bootloader',
-        title: "boot.asm",
-        language: "assembly", // or nasm
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '; Simple MBR Bootloader\n; BITS 16\n\nstart:\n    mov ax, 07C0h...',
-        content: `; Simple MBR Bootloader
+  // 14. Proper - Assembly
+  {
+    id: 14,
+    slug: 'mbr-bootloader',
+    title: "boot.asm",
+    language: "assembly", // or nasm
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '; Simple MBR Bootloader\n; BITS 16\n\nstart:\n    mov ax, 07C0h...',
+    content: `; Simple MBR Bootloader
 ; BITS 16
 
 start:
@@ -638,21 +638,21 @@ print_string:           ; Routine: output string in SI to screen
 
 times 510-($-$$) db 0   ; Pad remainder of 512 bytes with 0s
 dw 0AA55h               ; The standard PC boot signature`,
-    },
+  },
 
-    // 15. Proper - JSON UI Config
-    {
-        id: 15,
-        slug: 'ui-theme-config',
-        title: "shadcn-components.json",
-        language: "json",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '{\n  "$schema": "https://ui.shadcn.com/schema.json",\n  "style": "new-york",\n...',
-        content: `{
+  // 15. Proper - JSON UI Config
+  {
+    id: 15,
+    slug: 'ui-theme-config',
+    title: "shadcn-components.json",
+    language: "json",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '{\n  "$schema": "https://ui.shadcn.com/schema.json",\n  "style": "new-york",\n...',
+    content: `{
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "new-york",
   "rsc": true,
@@ -681,21 +681,21 @@ dw 0AA55h               ; The standard PC boot signature`,
     "collapsible"
   ]
 }`,
-    },
+  },
 
-    // 16. Proper - Markdown Todo
-    {
-        id: 16,
-        slug: 'dev-todo-list',
-        title: "TODO.md",
-        language: "markdown",
-        visibility: "public",
-        pinned: 0,
-        created_at: NOW,
-        updated_at: NOW,
-        expires_at: null,
-        preview: '# Project Roadmap\n\n## High Priority\n- [x] Fix production DB connection leak\n- [ ] Implement dark mode...',
-        content: `# Project Roadmap
+  // 16. Proper - Markdown Todo
+  {
+    id: 16,
+    slug: 'dev-todo-list',
+    title: "TODO.md",
+    language: "markdown",
+    visibility: "public",
+    pinned: 0,
+    created_at: NOW,
+    updated_at: NOW,
+    expires_at: null,
+    preview: '# Project Roadmap\n\n## High Priority\n- [x] Fix production DB connection leak\n- [ ] Implement dark mode...',
+    content: `# Project Roadmap
 
 ## High Priority
 - [x] Fix production DB connection leak
@@ -714,5 +714,5 @@ dw 0AA55h               ; The standard PC boot signature`,
 
 ## Notes
 Meeting with stakeholders on Friday at 10 AM. Bring coffee.`,
-    },
+  },
 ];
