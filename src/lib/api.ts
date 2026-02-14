@@ -8,6 +8,8 @@ import {
     cachePastesFromList,
 } from './offlineCache';
 
+import { DEMO_PASTES } from './demoData';
+
 const API_BASE = '/api';
 const NETWORK_TIMEOUT_MS = 4000;
 
@@ -125,8 +127,12 @@ export const api = {
         logout: () =>
             request<{ success: boolean }>('/auth/logout', { method: 'POST' }),
 
-        check: () =>
-            request<{ authenticated: boolean }>('/auth/login'),
+        check: () => {
+            if (import.meta.env.VITE_DEMO_MODE === 'true') {
+                return Promise.resolve({ authenticated: false });
+            }
+            return request<{ authenticated: boolean }>('/auth/login');
+        },
     },
 
     paste: {
@@ -140,6 +146,24 @@ export const api = {
             limit = 20,
             onUpdate?: (result: CachedResult<PasteListResponse>) => void,
         ): Promise<CachedResult<PasteListResponse>> => {
+            // DEMO MODE: Return static data
+            if (import.meta.env.VITE_DEMO_MODE === 'true') {
+                const start = (page - 1) * limit;
+                const end = start + limit;
+                const pastes = DEMO_PASTES.slice(start, end);
+                const hasMore = end < DEMO_PASTES.length;
+                return {
+                    data: {
+                        pastes,
+                        total: DEMO_PASTES.length,
+                        page,
+                        limit,
+                        hasMore
+                    },
+                    fromCache: false
+                };
+            }
+
             const myFetchId = ++listFetchId;
 
             // Try to get cached data (best-effort, don't let IDB errors break the flow)
@@ -200,6 +224,15 @@ export const api = {
             slug: string,
             onUpdate?: (result: CachedResult<{ paste: Paste }>) => void,
         ): Promise<CachedResult<{ paste: Paste }>> => {
+            // DEMO MODE: Return static data
+            if (import.meta.env.VITE_DEMO_MODE === 'true') {
+                const paste = DEMO_PASTES.find(p => p.slug === slug);
+                if (paste) {
+                    return { data: { paste }, fromCache: false };
+                }
+                throw new Error('Paste not found');
+            }
+
             const myFetchId = (pasteFetchIds[slug] = (pasteFetchIds[slug] || 0) + 1);
 
             let cached: Paste | undefined;

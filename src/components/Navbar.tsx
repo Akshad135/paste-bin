@@ -35,6 +35,7 @@ import { toast } from 'sonner';
 // True when using the bundled ghost icon (not a custom one via env vars)
 const faviconEnv = import.meta.env.VITE_FAVICON_URL;
 const isDefaultIcon = !faviconEnv || faviconEnv === '/favicon.svg';
+const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
 export function Navbar() {
     const { isAuthenticated, logout, login } = useAuth();
@@ -203,14 +204,16 @@ export function Navbar() {
                                     Logout
                                 </Button>
                             ) : (
-                                <Button
-                                    size="sm"
-                                    onClick={() => setIsLoginOpen(true)}
-                                    className="bg-primary hover:bg-primary/90 text-primary-foreground"
-                                >
-                                    <KeyIcon size={16} className="mr-1.5" />
-                                    Login
-                                </Button>
+                                !isDemo && (
+                                    <Button
+                                        size="sm"
+                                        onClick={() => setIsLoginOpen(true)}
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground"
+                                    >
+                                        <KeyIcon size={16} className="mr-1.5" />
+                                        Login
+                                    </Button>
+                                )
                             ))}
                         </div>
 
@@ -249,9 +252,11 @@ export function Navbar() {
                                         <LogoutIcon size={16} className="mr-2" /> Logout
                                     </DropdownMenuItem>
                                 ) : (
-                                    <DropdownMenuItem onClick={() => setIsLoginOpen(true)}>
-                                        <KeyIcon size={16} className="mr-2" /> Login
-                                    </DropdownMenuItem>
+                                    !isDemo && (
+                                        <DropdownMenuItem onClick={() => setIsLoginOpen(true)}>
+                                            <KeyIcon size={16} className="mr-2" /> Login
+                                        </DropdownMenuItem>
+                                    )
                                 ))}
                             </DropdownMenuContent>
                         </DropdownMenu>
