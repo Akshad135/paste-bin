@@ -67,3 +67,33 @@ export function timeAgo(dateString: string): string {
     if (seconds < 31536000) return `${Math.floor(seconds / 2592000)}mo ago`;
     return `${Math.floor(seconds / 31536000)}y ago`;
 }
+
+// Expiration options for time-based pastes
+export const EXPIRATION_OPTIONS = [
+    { value: 'never', label: 'Never' },
+    { value: '10s', label: '10 seconds' },
+    { value: '10m', label: '10 minutes' },
+    { value: '45m', label: '45 minutes' },
+    { value: '2h', label: '2 hours' },
+    { value: '1d', label: '1 day' },
+    { value: '1w', label: '1 week' },
+];
+
+export function isExpired(expiresAt: string | null): boolean {
+    if (!expiresAt) return false;
+    return new Date(expiresAt + 'Z') <= new Date();
+}
+
+export function timeUntilExpiry(expiresAt: string | null): string {
+    if (!expiresAt) return '';
+    const expiry = new Date(expiresAt + 'Z');
+    const now = new Date();
+    const seconds = Math.floor((expiry.getTime() - now.getTime()) / 1000);
+
+    if (seconds <= 0) return 'Expired';
+    if (seconds < 60) return `${seconds}s left`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m left`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h left`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d left`;
+    return `${Math.floor(seconds / 604800)}w left`;
+}

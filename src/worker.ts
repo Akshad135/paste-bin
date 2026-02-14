@@ -88,6 +88,28 @@ const pick = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
 const generateSlug = () => `${pick(adjectives)}-${pick(nouns)}-${pick(verbs)}`;
 
 // ---------------------------------------------------------------------------
+// Expiration helpers
+// ---------------------------------------------------------------------------
+const EXPIRES_IN_MAP: Record<string, number> = {
+    '10s': 10,
+    '10m': 10 * 60,
+    '45m': 45 * 60,
+    '2h': 2 * 60 * 60,
+    '1d': 24 * 60 * 60,
+    '1w': 7 * 24 * 60 * 60,
+};
+
+function computeExpiresAt(expiresIn?: string): string | null {
+    if (!expiresIn || expiresIn === 'never') return null;
+    const seconds = EXPIRES_IN_MAP[expiresIn];
+    if (!seconds) return null;
+    const d = new Date(Date.now() + seconds * 1000);
+    return d.toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
+}
+
+const NOT_EXPIRED_CLAUSE = "(expires_at IS NULL OR expires_at > datetime('now'))";
+
+// ---------------------------------------------------------------------------
 // JSON helper
 // ---------------------------------------------------------------------------
 function json(data: unknown, status = 200, headers?: Record<string, string>) {
@@ -136,16 +158,12 @@ async function handleListPastes(request: Request, env: Env, url: URL) {
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
         const offset = (page - 1) * limit;
 
-        let query: string;
-        let countQuery: string;
+        const conditions = [NOT_EXPIRED_CLAUSE];
+        if (!authenticated) conditions.push("visibility = 'public'");
+        const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
-        if (authenticated) {
-            query = 'SELECT id, slug, title, content, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?';
-            countQuery = 'SELECT COUNT(*) as total FROM pastes';
-        } else {
-            query = "SELECT id, slug, title, content, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes WHERE visibility = 'public' ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?";
-            countQuery = "SELECT COUNT(*) as total FROM pastes WHERE visibility = 'public'";
-        }
+        const query = `SELECT id, slug, title, content, language, visibility, pinned, expires_at, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ${whereClause} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?`;
+        const countQuery = `SELECT COUNT(*) as total FROM pastes ${whereClause}`;
 
         const pastes = await env.DB.prepare(query).bind(limit, offset).all();
         const countResult = await env.DB.prepare(countQuery).first<{ total: number }>();
@@ -173,6 +191,7 @@ async function handleCreatePaste(request: Request, env: Env) {
             content: string;
             language?: string;
             visibility?: 'public' | 'private';
+            expires_in?: string;
         };
 
         if (!body.content || body.content.trim() === '') {
@@ -188,10 +207,12 @@ async function handleCreatePaste(request: Request, env: Env) {
             attempts++;
         }
 
+        const expiresAt = computeExpiresAt(body.expires_in);
+
         const result = await env.DB.prepare(
-            'INSERT INTO pastes (slug, title, content, language, visibility) VALUES (?, ?, ?, ?, ?)'
+            'INSERT INTO pastes (slug, title, content, language, visibility, expires_at) VALUES (?, ?, ?, ?, ?, ?)'
         )
-            .bind(slug, body.title || '', body.content, body.language || 'plaintext', body.visibility || 'private')
+            .bind(slug, body.title || '', body.content, body.language || 'plaintext', body.visibility || 'private', expiresAt)
             .run();
 
         if (!result.success) return json({ error: 'Failed to create paste' }, 500);
@@ -205,6 +226,10 @@ async function handleCreatePaste(request: Request, env: Env) {
 async function handleGetPaste(request: Request, env: Env, slug: string) {
     const paste = await env.DB.prepare('SELECT * FROM pastes WHERE slug = ?').bind(slug).first();
     if (!paste) return json({ error: 'Paste not found' }, 404);
+    // Check expiration
+    if (paste.expires_at && new Date(paste.expires_at as string + 'Z') <= new Date()) {
+        return json({ error: 'This paste has expired' }, 410);
+    }
     if (paste.visibility === 'private' && !isAuthenticated(request, env)) {
         return json({ error: 'This paste is private' }, 403);
     }
@@ -222,19 +247,21 @@ async function handleUpdatePaste(request: Request, env: Env, slug: string) {
             language?: string;
             visibility?: 'public' | 'private';
             pinned?: number;
+            expires_in?: string;
         };
 
         const existing = await env.DB.prepare('SELECT id FROM pastes WHERE slug = ?').bind(slug).first();
         if (!existing) return json({ error: 'Paste not found' }, 404);
 
         const updates: string[] = [];
-        const values: (string | number)[] = [];
+        const values: (string | number | null)[] = [];
 
         if (body.title !== undefined) { updates.push('title = ?'); values.push(body.title); }
         if (body.content !== undefined) { updates.push('content = ?'); values.push(body.content); }
         if (body.language !== undefined) { updates.push('language = ?'); values.push(body.language); }
         if (body.visibility !== undefined) { updates.push('visibility = ?'); values.push(body.visibility); }
         if (body.pinned !== undefined) { updates.push('pinned = ?'); values.push(body.pinned); }
+        if (body.expires_in !== undefined) { updates.push('expires_at = ?'); values.push(computeExpiresAt(body.expires_in)); }
 
         if (updates.length === 0) return json({ error: 'No fields to update' }, 400);
 

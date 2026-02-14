@@ -22,6 +22,7 @@ export interface Paste {
     visibility: 'public' | 'private';
     pinned: number;
     preview?: string;
+    expires_at: string | null;
     created_at: string;
     updated_at: string;
 }
@@ -284,6 +285,7 @@ export const api = {
             content: string;
             language?: string;
             visibility?: 'public' | 'private';
+            expires_in?: string;
         }) =>
             request<{ slug: string; success: boolean }>('/paste', {
                 method: 'POST',

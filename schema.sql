@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS pastes (
   language TEXT DEFAULT 'plaintext',
   visibility TEXT DEFAULT 'private' CHECK(visibility IN ('public', 'private')),
   pinned INTEGER DEFAULT 0 CHECK(pinned IN (0, 1)),
+  expires_at TEXT DEFAULT NULL,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -13,3 +14,4 @@ CREATE TABLE IF NOT EXISTS pastes (
 CREATE INDEX IF NOT EXISTS idx_pastes_slug ON pastes(slug);
 CREATE INDEX IF NOT EXISTS idx_pastes_visibility ON pastes(visibility);
 CREATE INDEX IF NOT EXISTS idx_pastes_created_at ON pastes(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pastes_expires_at ON pastes(expires_at);

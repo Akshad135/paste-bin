@@ -5,7 +5,7 @@ import { api, type Paste } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { useOffline } from '@/lib/offlineContext';
 import { useTheme } from '@/components/ThemeProvider';
-import { getLanguageLabel, timeAgo } from '@/lib/constants';
+import { getLanguageLabel, timeAgo, isExpired } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,8 @@ import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
 import { ClockIcon } from '@/components/ui/animated-clock';
 import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
 import { PinIcon } from '@/components/ui/animated-pin';
+import { HourglassIcon } from '@/components/ui/animated-hourglass';
+import { ExpirationTimer } from '@/components/ExpirationTimer';
 import { toast } from 'sonner';
 
 // Map language values to shiki identifiers
@@ -214,17 +216,22 @@ export function ViewPaste() {
         );
     }
 
-    // Error state — only show after loading is complete
+    // Error / expired state — only show after loading is complete
     if (!loading && (error || !paste)) {
+        const expired = error?.toLowerCase().includes('expired');
         return (
             <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-6">
                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <div className="rounded-full bg-destructive/10 p-4 mb-4">
-                        <BadgeAlertIcon size={32} className="text-destructive" />
+                    <div className={cn('rounded-full p-4 mb-4', expired ? 'bg-amber-500/10' : 'bg-destructive/10')}>
+                        {expired ? (
+                            <HourglassIcon size={32} className="text-amber-500" />
+                        ) : (
+                            <BadgeAlertIcon size={32} className="text-destructive" />
+                        )}
                     </div>
-                    <h2 className="text-lg font-semibold">Paste not found</h2>
+                    <h2 className="text-lg font-semibold">{expired ? 'Paste expired' : 'Paste not found'}</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {error || 'This paste may have been deleted or is private.'}
+                        {expired ? 'This paste has expired and is no longer available.' : (error || 'This paste may have been deleted or is private.')}
                     </p>
                     <Button variant="outline" className="mt-4" onClick={() => navigate('/')}>
                         <ArrowLeftIcon size={16} className="mr-1.5" />
@@ -282,6 +289,18 @@ export function ViewPaste() {
                         <ClockIcon size={12} />
                         {timeAgo(paste.created_at)}
                     </span>
+                    {paste.expires_at && !isExpired(paste.expires_at) && (
+                        <Badge variant="outline" className="text-[11px] px-2 py-0.5 border-amber-500/50 text-amber-500 bg-amber-500/5 gap-1">
+                            <HourglassIcon size={12} />
+                            <ExpirationTimer
+                                expiresAt={paste.expires_at}
+                                onExpire={() => {
+                                    toast.error('Paste expired');
+                                    navigate('/');
+                                }}
+                            />
+                        </Badge>
+                    )}
                     <span className="text-xs text-muted-foreground font-mono">
                         {paste.slug}
                     </span>

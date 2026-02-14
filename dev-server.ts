@@ -42,6 +42,37 @@ const schema = readFileSync(SCHEMA_PATH, "utf-8");
 db.exec(schema);
 
 // ---------------------------------------------------------------------------
+// Auto-seed (DEV_LOAD_DEMO)
+// ---------------------------------------------------------------------------
+import { DEMO_PASTES } from "./src/lib/demoPastes.ts";
+
+if (process.env.DEV_LOAD_DEMO === "true") {
+  console.log("🌱 Checking for demo data (DEV_LOAD_DEMO=true)...");
+  let seededCount = 0;
+  for (const paste of DEMO_PASTES) {
+    const exists = db.query("SELECT 1 FROM pastes WHERE slug = ?").get(paste.slug);
+    if (!exists) {
+      db.query(
+        "INSERT INTO pastes (slug, title, content, language, visibility, pinned, expires_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).run(
+        paste.slug,
+        paste.title,
+        paste.content,
+        paste.language,
+        paste.visibility,
+        paste.pinned,
+        paste.expires_at,
+        paste.created_at,
+        paste.updated_at
+      );
+      seededCount++;
+    }
+  }
+  if (seededCount > 0) console.log(`✅ Seeded ${seededCount} demo pastes.`);
+}
+
+
+// ---------------------------------------------------------------------------
 // Auth helpers  (mirrors functions/lib/auth.ts exactly)
 // ---------------------------------------------------------------------------
 const COOKIE_NAME = "pastebin_auth";
@@ -109,6 +140,28 @@ const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
 const generateSlug = () => `${pick(adjectives)}-${pick(nouns)}-${pick(verbs)}`;
 
 // ---------------------------------------------------------------------------
+// Expiration helpers
+// ---------------------------------------------------------------------------
+const EXPIRES_IN_MAP: Record<string, number> = {
+  '10s': 10,
+  '10m': 10 * 60,
+  '45m': 45 * 60,
+  '2h': 2 * 60 * 60,
+  '1d': 24 * 60 * 60,
+  '1w': 7 * 24 * 60 * 60,
+};
+
+function computeExpiresAt(expiresIn?: string): string | null {
+  if (!expiresIn || expiresIn === 'never') return null;
+  const seconds = EXPIRES_IN_MAP[expiresIn];
+  if (!seconds) return null;
+  const d = new Date(Date.now() + seconds * 1000);
+  return d.toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
+}
+
+const NOT_EXPIRED_CLAUSE = "(expires_at IS NULL OR expires_at > datetime('now'))";
+
+// ---------------------------------------------------------------------------
 // JSON helpers
 // ---------------------------------------------------------------------------
 function json(data: unknown, status = 200, headers?: Record<string, string>) {
@@ -157,11 +210,13 @@ function handleListPastes(req: Request) {
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "20"), 50);
     const offset = (page - 1) * limit;
 
-    const whereClause = authenticated ? "" : "WHERE visibility = 'public'";
+    const conditions = [NOT_EXPIRED_CLAUSE];
+    if (!authenticated) conditions.push("visibility = 'public'");
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const pastes = db
       .query(
-        `SELECT id, slug, title, content, language, visibility, pinned, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ${whereClause} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?`
+        `SELECT id, slug, title, content, language, visibility, pinned, expires_at, created_at, updated_at, substr(content, 1, 200) as preview FROM pastes ${whereClause} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?`
       )
       .all(limit, offset);
 
@@ -187,6 +242,7 @@ async function handleCreatePaste(req: Request) {
       content: string;
       language?: string;
       visibility?: "public" | "private";
+      expires_in?: string;
     };
 
     if (!body.content || body.content.trim() === "")
@@ -201,14 +257,17 @@ async function handleCreatePaste(req: Request) {
       attempts++;
     }
 
+    const expiresAt = computeExpiresAt(body.expires_in);
+
     db.query(
-      "INSERT INTO pastes (slug, title, content, language, visibility) VALUES (?, ?, ?, ?, ?)"
+      "INSERT INTO pastes (slug, title, content, language, visibility, expires_at) VALUES (?, ?, ?, ?, ?, ?)"
     ).run(
       slug,
       body.title || "",
       body.content,
       body.language || "plaintext",
-      body.visibility || "private"
+      body.visibility || "private",
+      expiresAt
     );
 
     return json({ slug, success: true }, 201);
@@ -219,9 +278,13 @@ async function handleCreatePaste(req: Request) {
 
 // GET /api/paste/:slug
 function handleGetPaste(req: Request, slug: string) {
-  const paste = db.query("SELECT * FROM pastes WHERE slug = ?").get(slug);
+  const paste = db.query("SELECT * FROM pastes WHERE slug = ?").get(slug) as Record<string, unknown> | null;
   if (!paste) return json({ error: "Paste not found" }, 404);
-  if ((paste as { visibility: string }).visibility === "private" && !isAuthenticated(req))
+  // Check expiration
+  if (paste.expires_at && new Date(paste.expires_at as string + 'Z') <= new Date()) {
+    return json({ error: "This paste has expired" }, 410);
+  }
+  if (paste.visibility === "private" && !isAuthenticated(req))
     return json({ error: "This paste is private" }, 403);
   return json({ paste });
 }
@@ -237,19 +300,21 @@ async function handleUpdatePaste(req: Request, slug: string) {
       language?: string;
       visibility?: "public" | "private";
       pinned?: number;
+      expires_in?: string;
     };
 
     const existing = db.query("SELECT id FROM pastes WHERE slug = ?").get(slug);
     if (!existing) return json({ error: "Paste not found" }, 404);
 
     const updates: string[] = [];
-    const values: (string | number | undefined)[] = [];
+    const values: (string | number | null | undefined)[] = [];
 
     if (body.title !== undefined) { updates.push("title = ?"); values.push(body.title); }
     if (body.content !== undefined) { updates.push("content = ?"); values.push(body.content); }
     if (body.language !== undefined) { updates.push("language = ?"); values.push(body.language); }
     if (body.visibility !== undefined) { updates.push("visibility = ?"); values.push(body.visibility); }
     if (body.pinned !== undefined) { updates.push("pinned = ?"); values.push(body.pinned); }
+    if (body.expires_in !== undefined) { updates.push("expires_at = ?"); values.push(computeExpiresAt(body.expires_in)); }
 
     if (updates.length === 0) return json({ error: "No fields to update" }, 400);
 

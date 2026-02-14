@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { api, type Paste } from '@/lib/api';
-import { LANGUAGES } from '@/lib/constants';
+import { LANGUAGES, EXPIRATION_OPTIONS, timeUntilExpiry, isExpired } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,6 +27,7 @@ import { DeleteIcon } from '@/components/ui/animated-delete';
 import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
 import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
 import { PinIcon } from '@/components/ui/animated-pin';
+import { HourglassIcon } from '@/components/ui/animated-hourglass';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -47,6 +48,7 @@ export function EditPaste() {
     const [language, setLanguage] = useState('plaintext');
     const [isPublic, setIsPublic] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
+    const [expiresIn, setExpiresIn] = useState('never');
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -69,6 +71,8 @@ export function EditPaste() {
             setLanguage(p.language || 'plaintext');
             setIsPublic(p.visibility === 'public');
             setIsPinned(p.pinned === 1);
+            // Derive expiresIn state — if paste has expires_at, show remaining time label
+            setExpiresIn(p.expires_at ? '__current__' : 'never');
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load paste');
         } finally {
@@ -90,7 +94,8 @@ export function EditPaste() {
                 language,
                 visibility: isPublic ? 'public' : 'private',
                 pinned: isPinned ? 1 : 0,
-            });
+                expires_in: expiresIn === '__current__' ? undefined : expiresIn,
+            } as any);
             toast.success('Paste updated!');
             navigate('/');
         } catch (err) {
@@ -242,6 +247,27 @@ export function EditPaste() {
                                         <><LockIcon size={14} className="text-amber-400" /> Private</>
                                     )}
                                 </span>
+
+                                <div className="h-4 w-px bg-border/60 mx-1" />
+
+                                <HourglassIcon size={14} className="text-muted-foreground" />
+                                <Select value={expiresIn} onValueChange={setExpiresIn}>
+                                    <SelectTrigger className="w-[140px] h-8 text-xs">
+                                        <SelectValue placeholder={paste.expires_at && !isExpired(paste.expires_at) ? timeUntilExpiry(paste.expires_at) : paste.expires_at ? 'Expired' : 'Never'} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {paste.expires_at && (
+                                            <SelectItem value="__current__">
+                                                {isExpired(paste.expires_at) ? 'Expired' : timeUntilExpiry(paste.expires_at)}
+                                            </SelectItem>
+                                        )}
+                                        {EXPIRATION_OPTIONS.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="flex gap-2">
                                 <Button variant="outline" type="button" onClick={() => navigate('/')} className="border-border/60 hover:border-border">

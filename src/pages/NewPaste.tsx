@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { LANGUAGES } from '@/lib/constants';
+import { LANGUAGES, EXPIRATION_OPTIONS } from '@/lib/constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
 import { EarthIcon } from '@/components/ui/animated-earth';
 import { LockIcon } from '@/components/ui/animated-lock';
 import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
+import { HourglassIcon } from '@/components/ui/animated-hourglass';
 import { toast } from 'sonner';
 
 export function NewPaste() {
@@ -23,6 +24,7 @@ export function NewPaste() {
     const [content, setContent] = useState('');
     const [language, setLanguage] = useState('plaintext');
     const [isPublic, setIsPublic] = useState(false);
+    const [expiresIn, setExpiresIn] = useState('never');
     const [loading, setLoading] = useState(false);
 
     if (!isAuthenticated) {
@@ -43,6 +45,7 @@ export function NewPaste() {
                 content,
                 language,
                 visibility: isPublic ? 'public' : 'private',
+                expires_in: expiresIn === 'never' ? undefined : expiresIn,
             });
             toast.success('Paste created!');
             navigate('/');
@@ -130,11 +133,27 @@ export function NewPaste() {
                                 />
                                 <span className="text-sm text-muted-foreground flex items-center gap-1.5">
                                     {isPublic ? (
-                                        <><EarthIcon size={14} className="text-emerald-400" /> Public — visible to everyone</>
+                                        <><EarthIcon size={14} className="text-emerald-400" /> Public</>
                                     ) : (
-                                        <><LockIcon size={14} className="text-amber-400" /> Private — only you can see this</>
+                                        <><LockIcon size={14} className="text-amber-400" /> Private</>
                                     )}
                                 </span>
+
+                                <div className="h-4 w-px bg-border/60 mx-1" />
+
+                                <HourglassIcon size={14} className="text-muted-foreground" />
+                                <Select value={expiresIn} onValueChange={setExpiresIn}>
+                                    <SelectTrigger className="w-[130px] h-8 text-xs">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {EXPIRATION_OPTIONS.map((opt) => (
+                                            <SelectItem key={opt.value} value={opt.value}>
+                                                {opt.label}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <Button type="submit" disabled={loading}>
                                 {loading && <LoaderPinwheelIcon size={16} className="mr-1.5 animate-spin" />}
@@ -147,3 +166,4 @@ export function NewPaste() {
         </div>
     );
 }
+

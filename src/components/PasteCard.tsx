@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CodePreview } from '@/components/CodePreview';
 import type { Paste } from '@/lib/api';
 import { api } from '@/lib/api';
-import { getLanguageLabel, timeAgo } from '@/lib/constants';
+import { getLanguageLabel, timeAgo, isExpired } from '@/lib/constants';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,8 @@ import { DeleteIcon } from '@/components/ui/animated-delete';
 
 import { ClockIcon } from '@/components/ui/animated-clock';
 import { PinIcon } from '@/components/ui/animated-pin';
+import { HourglassIcon } from '@/components/ui/animated-hourglass';
+import { ExpirationTimer } from '@/components/ExpirationTimer';
 import { toast } from 'sonner';
 
 interface PasteCardProps {
@@ -174,10 +176,21 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
 
                     {/* Footer */}
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-auto">
-                        <span className="flex items-center gap-1">
-                            <ClockIcon size={12} className="text-primary/60" />
-                            {timeAgo(paste.created_at)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1">
+                                <ClockIcon size={12} className="text-primary/60" />
+                                {timeAgo(paste.created_at)}
+                            </span>
+                            {paste.expires_at && !isExpired(paste.expires_at) && (
+                                <span className="flex items-center gap-1 text-amber-500">
+                                    <HourglassIcon size={12} />
+                                    <ExpirationTimer
+                                        expiresAt={paste.expires_at}
+                                        onExpire={() => onDelete?.(paste.slug)}
+                                    />
+                                </span>
+                            )}
+                        </div>
                         <span className="font-mono truncate ml-2">{paste.slug}</span>
                     </div>
                 </CardContent>
