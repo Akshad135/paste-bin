@@ -1,116 +1,112 @@
-# React + TypeScript + Vite
+# pastebin
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A self-hosted, private-first pastebin with syntax highlighting. Deploy on Cloudflare Pages for free, or run it anywhere with Bun.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Syntax highlighting** — 50+ languages via [Shiki](https://shiki.style)
+- **Single-user auth** — passphrase-protected, no accounts needed
+- **PWA** — installable on mobile (Samsung Internet, Chrome, etc.)
+- **Offline support** — cached pastes viewable without internet
+- **5 color palettes** — dark & light modes for each
+- **Pin pastes** — keep important pastes at the top
+- **Public / private** — share pastes or keep them to yourself
+- **Responsive** — works on desktop, tablet, and mobile
+- **Zero tracking** — no analytics, no cookies beyond auth
 
-## 🚀 Deployment (Cloudflare Pages)
+## Quick Start — Cloudflare Pages
 
-The easiest way to deploy is using Cloudflare Pages with Git integration.
+The easiest way: fork → configure → deploy. Free tier is more than enough.
 
-1.  **Fork this repository** to your GitHub account.
-2.  **Log in to Cloudflare Dashboard** > **Workers & Pages** > **Create Application** > **Pages** > **Connect to Git**.
-3.  Select the `pastebin` repository.
-4.  **Configure Build Settings**:
-    - **Framework Preset**: Vite
-    - **Build Command**: `npm run build`
-    - **Build Output Directory**: `dist`
-5.  **Environment Variables**:
-    - Add `AUTH_KEY`: Your secret passphrase for logging in.
-6.  **Save and Deploy**.
+1. **Fork** this repo
+2. Go to **Cloudflare Dashboard** → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
+3. Select your fork and configure:
+   - **Build command**: `bun run build`
+   - **Build output**: `dist`
+4. Add **environment variable**: `AUTH_KEY` = your secret passphrase
+5. **Deploy**
 
-### ⚠️ Important: Database Setup
-After the first deployment fails (or succeeds but shows errors), you must bind the D1 database:
+### Database Setup (one-time)
 
-1.  Go to **Workers & Pages** > **D1** and create a database named `pastebin-db`.
-2.  Go to your Pages project > **Settings** > **Functions**.
-3.  Scroll to **D1 Database Bindings**.
-4.  Add binding:
-    - Variable name: `DB`
-    - Namespace: `pastebin-db` (select the one you created).
-5.  **Redeploy** the latest commit for changes to take effect.
-6.  **Initialize the Schema**:
-    Go to **D1** > `pastebin-db` > **Console** and paste the contents of `schema.sql` to create the tables.
+After the first deploy:
 
-## 🛠️ Local Development
+1. **D1** → Create database → name it `pastebin-db`
+2. **Pages project** → **Settings** → **Functions** → **D1 Bindings**:
+   - Variable name: `DB`
+   - Database: `pastebin-db`
+3. **D1** → `pastebin-db` → **Console** → paste contents of `schema.sql` → **Execute**
+4. **Redeploy** the latest commit
 
-1.  **Run the Setup Script** (Windows):
-    ```powershell
-    .\setup.ps1
-    ```
+## Local Development
 
-    Or manually:
-    ```bash
-    bun install
-    bun run db:create
-    bun run db:migrate:local
-    bun run dev:api
-    ```
+### Prerequisites
 
-## React Compiler
+- [Bun](https://bun.sh) (v1.0+)
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Setup
 
-## Expanding the ESLint configuration
+```bash
+# Install dependencies
+bun install
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Create env file (edit AUTH_KEY at minimum)
+cp .env.example .env
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Create and migrate the local database
+bun run db:create
+bun run db:migrate:local
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Start the API server (terminal 1)
+bun run dev:api
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Start the frontend (terminal 2)
+bun run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open `http://localhost:5173` — the frontend proxies API requests to the dev server on `:8788`.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Windows (PowerShell)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```powershell
+.\setup.ps1
 ```
+
+## VPS / Self-Hosted
+
+Build the frontend and serve with Cloudflare Pages, or adapt the Bun dev server for production:
+
+```bash
+bun install
+cp .env.example .env   # edit AUTH_KEY, branding, etc.
+bun run build           # outputs to dist/
+```
+
+Serve `dist/` with any static file server and run `bun run dev:api` (or adapt it) as the API backend behind a reverse proxy.
+
+## Environment Variables
+
+All branding is configurable via `.env`. See [`.env.example`](.env.example) for the full list.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_APP_NAME` | `pastebin` | Site name (navbar, tab title, PWA) |
+| `VITE_APP_NAME_ACCENT` | `bin` | Colored portion of navbar logo text |
+| `VITE_APP_DESCRIPTION` | *A simple, private-first…* | Meta description |
+| `VITE_FAVICON_URL` | `/favicon.svg` | Favicon path or URL |
+| `VITE_PWA_ICON_192` | `/icon-192.png` | PWA icon 192×192 |
+| `VITE_PWA_ICON_512` | `/icon-512.png` | PWA icon 512×512 |
+| `VITE_PWA_ICON_MASKABLE` | `/icon-maskable-512.png` | Maskable PWA icon |
+| `VITE_APPLE_TOUCH_ICON` | `/icon-192.png` | iOS home screen icon |
+| `AUTH_KEY` | *(required)* | Login passphrase (backend only) |
+
+> **Icons**: Drop your own images into `public/` and set the corresponding env var, or provide an external URL. The bundled ghost icon is used by default.
+
+## Tech Stack
+
+| Layer | Tech |
+|-------|------|
+| Frontend | React 19, Vite, TypeScript, Tailwind CSS |
+| Backend | Cloudflare Pages Functions (prod) / Bun (dev) |
+| Database | Cloudflare D1 (SQLite) |
+| Syntax highlighting | Shiki |
+| Icons | Lucide React |

@@ -1,3 +1,4 @@
+import { config } from '@/lib/config';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
@@ -18,7 +19,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Palette as PaletteIcon, Ghost } from 'lucide-react';
+import { Palette as PaletteIcon } from 'lucide-react';
 import { SunIcon } from '@/components/ui/animated-sun';
 import { MoonIcon } from '@/components/ui/animated-moon';
 import { MenuIcon } from '@/components/ui/animated-menu';
@@ -76,8 +77,11 @@ export function Navbar() {
                         onClick={() => navigate('/')}
                         className="flex items-center gap-2 font-bold text-lg tracking-tight cursor-pointer"
                     >
-                        <Ghost className="h-6 w-6 text-primary" />
-                        <span>paste<span className="text-primary">bin</span></span>
+                        <img src={config.faviconUrl} alt="" className="h-6 w-6" />
+                        <span>
+                            {config.appNamePrefix}
+                            <span className="text-primary">{config.appNameAccent}</span>
+                        </span>
                     </button>
 
                     {/* Desktop center nav — hidden on mobile */}

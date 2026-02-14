@@ -16,13 +16,15 @@ const DB_DIR = join(import.meta.dir, ".wrangler", "state", "dev-db");
 const DB_PATH = join(DB_DIR, "pastebin.sqlite");
 const SCHEMA_PATH = join(import.meta.dir, "schema.sql");
 const AUTH_KEY = process.env.AUTH_KEY ?? (() => {
-  // Read from .dev.vars (same as wrangler)
-  try {
-    const vars = readFileSync(join(import.meta.dir, ".dev.vars"), "utf-8");
-    const match = vars.match(/^AUTH_KEY=(.+)$/m);
-    if (match) return match[1].trim();
-  } catch { /* ignore */ }
-  console.warn("⚠  AUTH_KEY not found in .dev.vars — using 'dev123'");
+  // Try .env first, then .dev.vars (wrangler compat)
+  for (const file of [".env", ".dev.vars"]) {
+    try {
+      const vars = readFileSync(join(import.meta.dir, file), "utf-8");
+      const match = vars.match(/^AUTH_KEY=(.+)$/m);
+      if (match) return match[1].trim();
+    } catch { /* ignore */ }
+  }
+  console.warn("⚠  AUTH_KEY not found in .env or .dev.vars — using 'dev123'");
   return "dev123";
 })();
 
@@ -339,7 +341,7 @@ console.log(`
   -----------------------
   http://localhost:${PORT}
   DB: ${DB_PATH}
-  AUTH_KEY loaded from .dev.vars
+  AUTH_KEY loaded from .env / .dev.vars
 `);
 
 Bun.serve({
