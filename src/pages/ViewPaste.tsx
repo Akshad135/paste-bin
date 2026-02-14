@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { codeToHtml } from 'shiki';
 import { api, type Paste } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { useOffline } from '@/lib/offlineContext';
 import { useTheme } from '@/components/ThemeProvider';
 import { getLanguageLabel, timeAgo } from '@/lib/constants';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,7 @@ const EXT_MAP: Record<string, string> = {
 export function ViewPaste() {
     const { slug } = useParams<{ slug: string }>();
     const { isAuthenticated } = useAuth();
+    const { isOffline, markStale, clearStale } = useOffline();
     const { mode } = useTheme();
     const navigate = useNavigate();
 
@@ -63,6 +65,9 @@ export function ViewPaste() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [highlightedHtml, setHighlightedHtml] = useState('');
+
+    // Prevent showing skeleton on re-visit if we already have the paste
+    const hasLoadedOnce = useRef(false);
 
     useEffect(() => {
         if (!slug) return;
@@ -75,11 +80,26 @@ export function ViewPaste() {
     }, [paste, mode]);
 
     const loadPaste = async () => {
-        setLoading(true);
+        if (!hasLoadedOnce.current) {
+            setLoading(true);
+        }
         setError('');
         try {
-            const { paste: data } = await api.paste.get(slug!);
-            setPaste(data);
+            const result = await api.paste.get(slug!, (freshResult) => {
+                // Background refresh — silently swap in fresh data
+                setPaste(freshResult.data.paste);
+                clearStale();
+            });
+
+            setPaste(result.data.paste);
+
+            if (result.fromCache) {
+                markStale();
+            } else {
+                clearStale();
+            }
+
+            hasLoadedOnce.current = true;
         } catch (err) {
             console.error('Failed to load paste:', err);
             setError(err instanceof Error ? err.message : 'Failed to load paste');
@@ -145,7 +165,7 @@ export function ViewPaste() {
     };
 
     const togglePin = async () => {
-        if (!paste) return;
+        if (!paste || isOffline) return;
         const newPinned = !paste.pinned;
         try {
             await api.paste.pin(paste.slug, newPinned);
@@ -157,8 +177,8 @@ export function ViewPaste() {
         }
     };
 
-    // Loading state
-    if (loading) {
+    // Loading state — only show skeleton if we have no data yet
+    if (loading && !paste) {
         return (
             <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-6">
                 <div className="flex items-center gap-3 mb-6">
@@ -197,6 +217,7 @@ export function ViewPaste() {
     }
 
     const lineCount = paste.content.split('\n').length;
+    const canEdit = isAuthenticated && !isOffline;
 
     return (
         <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4 flex flex-col h-full box-border">
@@ -285,7 +306,7 @@ export function ViewPaste() {
                     >
                         <DownloadIcon size={16} />
                     </Button>
-                    {isAuthenticated && (
+                    {canEdit && (
                         <>
                             <Button
                                 variant="ghost"

@@ -83,8 +83,8 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
 
     const copyContent = async () => {
         try {
-            const { paste: full } = await api.paste.get(paste.slug);
-            await navigator.clipboard.writeText(full.content);
+            const text = paste.content || (paste as any).preview || '';
+            await navigator.clipboard.writeText(text);
             toast.success('Copied to clipboard!');
         } catch {
             toast.error('Failed to copy content');

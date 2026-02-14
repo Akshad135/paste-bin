@@ -61,13 +61,14 @@ export function EditPaste() {
         setLoading(true);
         setError('');
         try {
-            const data = await api.paste.get(slug!);
-            setPaste(data.paste);
-            setTitle(data.paste.title || '');
-            setContent(data.paste.content);
-            setLanguage(data.paste.language || 'plaintext');
-            setIsPublic(data.paste.visibility === 'public');
-            setIsPinned(data.paste.pinned === 1);
+            const result = await api.paste.get(slug!);
+            const p = result.data.paste;
+            setPaste(p);
+            setTitle(p.title || '');
+            setContent(p.content);
+            setLanguage(p.language || 'plaintext');
+            setIsPublic(p.visibility === 'public');
+            setIsPinned(p.pinned === 1);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Failed to load paste');
         } finally {

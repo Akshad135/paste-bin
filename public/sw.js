@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pastebin-v2';
+const CACHE_NAME = 'pastebin-v3';
 const STATIC_ASSETS = [
     '/',
     '/icon.svg',
@@ -26,8 +26,7 @@ self.addEventListener('activate', (event) => {
     self.clients.claim();
 });
 
-// Fetch — network-first for API/navigation, cache-first for static assets
-// Samsung Internet REQUIRES a fetch event handler for PWA installability
+// Fetch — strategy depends on request type
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
@@ -35,19 +34,34 @@ self.addEventListener('fetch', (event) => {
     // Skip non-GET
     if (request.method !== 'GET') return;
 
-    // API calls & navigations — network first, fallback to cache
-    if (url.pathname.startsWith('/api') || request.mode === 'navigate') {
+    // API GET requests — network-first, cache response for offline fallback
+    if (url.pathname.startsWith('/api')) {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    // Cache successful navigation responses
-                    if (request.mode === 'navigate' && response.ok) {
+                    if (response.ok) {
                         const clone = response.clone();
                         caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
                     }
                     return response;
                 })
-                .catch(() => caches.match(request).then((r) => r || caches.match('/')))
+                .catch(() => caches.match(request))
+        );
+        return;
+    }
+
+    // Navigation requests — network-first, fallback to cached shell
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request)
+                .then((response) => {
+                    if (response.ok) {
+                        const clone = response.clone();
+                        caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+                    }
+                    return response;
+                })
+                .catch(() => caches.match('/'))
         );
         return;
     }
