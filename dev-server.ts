@@ -172,6 +172,57 @@ function json(data: unknown, status = 200, headers?: Record<string, string>) {
 }
 
 // ---------------------------------------------------------------------------
+// SSE (Server-Sent Events) broadcast
+// ---------------------------------------------------------------------------
+type SSEClient = ReadableStreamDefaultController<Uint8Array>;
+const sseClients = new Set<SSEClient>();
+
+function broadcastEvent(type: string, data?: Record<string, unknown>) {
+  const payload = `data: ${JSON.stringify({ type, ...data })}\n\n`;
+  const encoded = new TextEncoder().encode(payload);
+  for (const client of sseClients) {
+    try {
+      client.enqueue(encoded);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
+
+function handleSSE(): Response {
+  let ctrl: SSEClient;
+  let heartbeat: ReturnType<typeof setInterval>;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      ctrl = controller;
+      sseClients.add(ctrl);
+      ctrl.enqueue(new TextEncoder().encode(": connected\n\n"));
+      // Send a comment every 30s to keep the connection alive
+      heartbeat = setInterval(() => {
+        try {
+          ctrl.enqueue(new TextEncoder().encode(": heartbeat\n\n"));
+        } catch {
+          clearInterval(heartbeat);
+          sseClients.delete(ctrl);
+        }
+      }, 30_000);
+    },
+    cancel() {
+      clearInterval(heartbeat);
+      sseClients.delete(ctrl);
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Route handlers
 // ---------------------------------------------------------------------------
 
@@ -272,6 +323,7 @@ async function handleCreatePaste(req: Request) {
       expiresAt
     );
 
+    broadcastEvent("paste_created", { slug });
     return json({ slug, success: true }, 201);
   } catch {
     return json({ error: "Invalid request" }, 400);
@@ -323,6 +375,7 @@ async function handleUpdatePaste(req: Request, slug: string) {
     updates.push("updated_at = datetime('now')");
 
     db.query(`UPDATE pastes SET ${updates.join(", ")} WHERE slug = ?`).run(...(values as any[]), slug);
+    broadcastEvent("paste_updated", { slug });
     return json({ success: true });
   } catch (err) {
     console.error("Failed to update paste:", err);
@@ -338,6 +391,7 @@ function handleDeletePaste(req: Request, slug: string) {
   if (!existing) return json({ error: "Paste not found" }, 404);
 
   db.query("DELETE FROM pastes WHERE slug = ?").run(slug);
+  broadcastEvent("paste_deleted", { slug });
   return json({ success: true });
 }
 
@@ -361,6 +415,11 @@ async function router(req: Request): Promise<Response> {
   if (method === "OPTIONS") return addCors(new Response(null, { status: 204 }));
 
   let res: Response;
+
+  // /api/events (SSE)
+  if (path === "/api/events" && method === "GET") {
+    return addCors(handleSSE());
+  }
 
   // /api/ping
   if (path === "/api/ping") {
@@ -413,5 +472,6 @@ console.log(`
 
 Bun.serve({
   port: PORT,
+  idleTimeout: 255, // max — prevents Bun from killing SSE connections
   fetch: router,
 });

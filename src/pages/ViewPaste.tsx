@@ -78,6 +78,24 @@ export function ViewPaste() {
         return () => window.removeEventListener('online', handleOnline);
     }, []);
 
+    // SSE: auto-refresh or navigate away when paste is changed/deleted
+    useEffect(() => {
+        if (!slug) return;
+        const unsubscribe = api.events.subscribe((event) => {
+            if (event.slug === slug) {
+                if (event.type === 'paste_deleted') {
+                    setPaste(null);
+                    setError('This paste has been deleted.');
+                    setLoading(false);
+                } else {
+                    // paste_updated — reload
+                    setLoadTrigger(t => t + 1);
+                }
+            }
+        });
+        return unsubscribe;
+    }, [slug]);
+
     // Main data load effect
     useEffect(() => {
         if (!slug) return;

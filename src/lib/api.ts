@@ -310,4 +310,34 @@ export const api = {
                 body: JSON.stringify({ pinned: pinned ? 1 : 0 }),
             }),
     },
+
+    events: {
+        /**
+         * Subscribe to real-time paste events via SSE.
+         * Returns an unsubscribe function to close the connection.
+         */
+        subscribe(onEvent: (event: { type: string; slug?: string }) => void): () => void {
+            // No SSE in demo mode or when offline
+            if (import.meta.env.VITE_DEMO_MODE === 'true' || !navigator.onLine) {
+                return () => { };
+            }
+
+            const es = new EventSource(`${API_BASE}/events`);
+
+            es.onmessage = (e) => {
+                try {
+                    const data = JSON.parse(e.data);
+                    onEvent(data);
+                } catch {
+                    // ignore malformed messages
+                }
+            };
+
+            es.onerror = () => {
+                // EventSource auto-reconnects; nothing to do
+            };
+
+            return () => es.close();
+        },
+    },
 };

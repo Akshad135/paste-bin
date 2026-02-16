@@ -119,6 +119,57 @@ function json(data: unknown, status = 200, headers?: Record<string, string>) {
 }
 
 // ---------------------------------------------------------------------------
+// SSE (Server-Sent Events) broadcast
+// ---------------------------------------------------------------------------
+type SSEClient = ReadableStreamDefaultController<Uint8Array>;
+const sseClients = new Set<SSEClient>();
+
+function broadcastEvent(type: string, data?: Record<string, unknown>) {
+    const payload = `data: ${JSON.stringify({ type, ...data })}\n\n`;
+    const encoded = new TextEncoder().encode(payload);
+    for (const client of sseClients) {
+        try {
+            client.enqueue(encoded);
+        } catch {
+            sseClients.delete(client);
+        }
+    }
+}
+
+function handleSSE(): Response {
+    let ctrl: SSEClient;
+    let heartbeat: ReturnType<typeof setInterval>;
+    const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+            ctrl = controller;
+            sseClients.add(ctrl);
+            ctrl.enqueue(new TextEncoder().encode(": connected\n\n"));
+            // Send a comment every 30s to keep the connection alive
+            heartbeat = setInterval(() => {
+                try {
+                    ctrl.enqueue(new TextEncoder().encode(": heartbeat\n\n"));
+                } catch {
+                    clearInterval(heartbeat);
+                    sseClients.delete(ctrl);
+                }
+            }, 30_000);
+        },
+        cancel() {
+            clearInterval(heartbeat);
+            sseClients.delete(ctrl);
+        },
+    });
+
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
+    });
+}
+
+// ---------------------------------------------------------------------------
 // API route handlers
 // ---------------------------------------------------------------------------
 
@@ -216,6 +267,7 @@ async function handleCreatePaste(request: Request, env: Env) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to create paste' }, 500);
+        broadcastEvent('paste_created', { slug });
         return json({ slug, success: true }, 201);
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -274,6 +326,7 @@ async function handleUpdatePaste(request: Request, env: Env, slug: string) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to update paste' }, 500);
+        broadcastEvent('paste_updated', { slug });
         return json({ success: true });
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -289,6 +342,7 @@ async function handleDeletePaste(request: Request, env: Env, slug: string) {
 
     const result = await env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(slug).run();
     if (!result.success) return json({ error: 'Failed to delete paste' }, 500);
+    broadcastEvent('paste_deleted', { slug });
     return json({ success: true });
 }
 
@@ -316,6 +370,8 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
     if (path === '/api/ping') {
         res = handlePing();
+    } else if (path === '/api/events' && method === 'GET') {
+        res = handleSSE();
     } else if (path === '/api/auth/login') {
         res = method === 'POST' ? await handleLogin(request, env) : handleAuthCheck(request, env);
     } else if (path === '/api/auth/logout' && method === 'POST') {

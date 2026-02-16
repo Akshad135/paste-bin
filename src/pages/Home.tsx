@@ -39,6 +39,14 @@ export function Home() {
         return () => window.removeEventListener('online', handleOnline);
     }, []);
 
+    // SSE: auto-refresh when pastes change on another device
+    useEffect(() => {
+        const unsubscribe = api.events.subscribe(() => {
+            setLoadTrigger(t => t + 1);
+        });
+        return unsubscribe;
+    }, []);
+
     // Main data load effect
     useEffect(() => {
         let cancelled = false;
