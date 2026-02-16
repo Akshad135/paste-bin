@@ -131,18 +131,18 @@ function getHub(env: Env) {
 
 /**
  * Broadcast a paste event to all connected clients via the Durable Object.
- * Fire-and-forget — failures are logged but never block the response.
+ * Uses ctx.waitUntil() so the broadcast completes even after the response
+ * is returned — without this, CF Workers cancel pending async work.
  */
-async function broadcastEvent(env: Env, type: string, data?: Record<string, unknown>) {
-    try {
-        const hub = getHub(env);
-        await hub.fetch(new Request('https://sse-hub/broadcast', {
-            method: 'POST',
-            body: JSON.stringify({ type, ...data }),
-        }));
-    } catch {
-        // DO unavailable — not critical, client will poll on next load
-    }
+function broadcastEvent(ctx: ExecutionContext, env: Env, type: string, data?: Record<string, unknown>) {
+    ctx.waitUntil(
+        getHub(env)
+            .fetch(new Request('https://sse-hub/broadcast', {
+                method: 'POST',
+                body: JSON.stringify({ type, ...data }),
+            }))
+            .catch(() => { /* DO unavailable — not critical */ }),
+    );
 }
 
 /**
@@ -219,7 +219,7 @@ async function handleListPastes(request: Request, env: Env, url: URL) {
 }
 
 // POST /api/paste
-async function handleCreatePaste(request: Request, env: Env) {
+async function handleCreatePaste(request: Request, env: Env, ctx: ExecutionContext) {
     if (!isAuthenticated(request, env)) return json({ error: 'Unauthorized' }, 401);
 
     try {
@@ -254,7 +254,7 @@ async function handleCreatePaste(request: Request, env: Env) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to create paste' }, 500);
-        broadcastEvent(env, 'paste_created', { slug });
+        broadcastEvent(ctx, env, 'paste_created', { slug });
         return json({ slug, success: true }, 201);
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -276,7 +276,7 @@ async function handleGetPaste(request: Request, env: Env, slug: string) {
 }
 
 // PUT /api/paste/:slug
-async function handleUpdatePaste(request: Request, env: Env, slug: string) {
+async function handleUpdatePaste(request: Request, env: Env, slug: string, ctx: ExecutionContext) {
     if (!isAuthenticated(request, env)) return json({ error: 'Unauthorized' }, 401);
 
     try {
@@ -313,7 +313,7 @@ async function handleUpdatePaste(request: Request, env: Env, slug: string) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to update paste' }, 500);
-        broadcastEvent(env, 'paste_updated', { slug });
+        broadcastEvent(ctx, env, 'paste_updated', { slug });
         return json({ success: true });
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -321,7 +321,7 @@ async function handleUpdatePaste(request: Request, env: Env, slug: string) {
 }
 
 // DELETE /api/paste/:slug
-async function handleDeletePaste(request: Request, env: Env, slug: string) {
+async function handleDeletePaste(request: Request, env: Env, slug: string, ctx: ExecutionContext) {
     if (!isAuthenticated(request, env)) return json({ error: 'Unauthorized' }, 401);
 
     const existing = await env.DB.prepare('SELECT id FROM pastes WHERE slug = ?').bind(slug).first();
@@ -329,14 +329,14 @@ async function handleDeletePaste(request: Request, env: Env, slug: string) {
 
     const result = await env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(slug).run();
     if (!result.success) return json({ error: 'Failed to delete paste' }, 500);
-    broadcastEvent(env, 'paste_deleted', { slug });
+    broadcastEvent(ctx, env, 'paste_deleted', { slug });
     return json({ success: true });
 }
 
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
-async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+async function handleApi(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
     const path = url.pathname;
     const method = request.method;
 
@@ -364,7 +364,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     } else if (path === '/api/auth/logout' && method === 'POST') {
         res = handleLogout();
     } else if (path === '/api/paste' || path === '/api/paste/') {
-        res = method === 'POST' ? await handleCreatePaste(request, env) : await handleListPastes(request, env, url);
+        res = method === 'POST' ? await handleCreatePaste(request, env, ctx) : await handleListPastes(request, env, url);
     } else if (path.startsWith('/api/paste/')) {
         const slug = path.replace('/api/paste/', '').replace(/\/$/, '');
         if (!slug) {
@@ -372,9 +372,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
         } else if (method === 'GET') {
             res = await handleGetPaste(request, env, slug);
         } else if (method === 'PUT') {
-            res = await handleUpdatePaste(request, env, slug);
+            res = await handleUpdatePaste(request, env, slug, ctx);
         } else if (method === 'DELETE') {
-            res = await handleDeletePaste(request, env, slug);
+            res = await handleDeletePaste(request, env, slug, ctx);
         } else {
             res = json({ error: 'Method not allowed' }, 405);
         }
@@ -392,13 +392,13 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 // Worker export
 // ---------------------------------------------------------------------------
 export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         try {
             const url = new URL(request.url);
 
             // Route API requests
             if (url.pathname.startsWith('/api/')) {
-                return handleApi(request, env, url);
+                return handleApi(request, env, url, ctx);
             }
 
             // Static assets — with SPA fallback
