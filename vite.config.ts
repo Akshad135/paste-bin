@@ -77,19 +77,8 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        // SSE endpoint — must not buffer the response
-        '/api/stream': {
-          target: 'http://127.0.0.1:8788',
-          changeOrigin: true,
-          configure: (proxy) => {
-            proxy.on('proxyRes', (proxyRes) => {
-              // Prevent any upstream buffering (nginx, etc.)
-              proxyRes.headers['x-accel-buffering'] = 'no'
-              proxyRes.headers['cache-control'] = 'no-cache'
-            })
-            proxy.on('error', () => { /* SSE will auto-reconnect */ })
-          },
-        },
+        // Note: /api/stream (WebSocket) is NOT proxied here —
+        // the client connects directly to the API server in dev mode.
         '/api': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

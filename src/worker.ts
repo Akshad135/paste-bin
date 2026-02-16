@@ -13,6 +13,7 @@ interface Env {
     DB: D1Database;
     AUTH_KEY: string;
     ASSETS: { fetch: (request: Request) => Promise<Response> };
+    SSE_HUB: DurableObjectNamespace;
 }
 
 // ---------------------------------------------------------------------------
@@ -119,56 +120,40 @@ function json(data: unknown, status = 200, headers?: Record<string, string>) {
 }
 
 // ---------------------------------------------------------------------------
-// SSE (Server-Sent Events) broadcast
+// Real-time broadcast via Durable Object (SSEHub)
 // ---------------------------------------------------------------------------
-type SSEClient = ReadableStreamDefaultController<Uint8Array>;
-const sseClients = new Set<SSEClient>();
 
-function broadcastEvent(type: string, data?: Record<string, unknown>) {
-    const payload = `data: ${JSON.stringify({ type, ...data })}\n\n`;
-    const encoded = new TextEncoder().encode(payload);
-    for (const client of sseClients) {
-        try {
-            client.enqueue(encoded);
-        } catch {
-            sseClients.delete(client);
-        }
+/** Get the singleton SSEHub Durable Object stub. */
+function getHub(env: Env) {
+    const id = env.SSE_HUB.idFromName('global');
+    return env.SSE_HUB.get(id);
+}
+
+/**
+ * Broadcast a paste event to all connected clients via the Durable Object.
+ * Fire-and-forget — failures are logged but never block the response.
+ */
+async function broadcastEvent(env: Env, type: string, data?: Record<string, unknown>) {
+    try {
+        const hub = getHub(env);
+        await hub.fetch(new Request('https://sse-hub/broadcast', {
+            method: 'POST',
+            body: JSON.stringify({ type, ...data }),
+        }));
+    } catch {
+        // DO unavailable — not critical, client will poll on next load
     }
 }
 
-function handleSSE(): Response {
-    let ctrl: SSEClient;
-    let heartbeat: ReturnType<typeof setInterval>;
-    const stream = new ReadableStream<Uint8Array>({
-        start(controller) {
-            ctrl = controller;
-            sseClients.add(ctrl);
-            ctrl.enqueue(new TextEncoder().encode(": connected\n\n"));
-            // Send a comment every 30s to keep the connection alive
-            heartbeat = setInterval(() => {
-                try {
-                    ctrl.enqueue(new TextEncoder().encode(": heartbeat\n\n"));
-                } catch {
-                    clearInterval(heartbeat);
-                    sseClients.delete(ctrl);
-                }
-            }, 30_000);
-        },
-        cancel() {
-            clearInterval(heartbeat);
-            sseClients.delete(ctrl);
-        },
-    });
-
-    return new Response(stream, {
-        headers: {
-            'Content-Type': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-            'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
-            'Access-Control-Allow-Credentials': 'true',
-        },
-    });
+/**
+ * Handle GET /api/stream — proxy the WebSocket upgrade to the Durable Object.
+ */
+async function handleStream(request: Request, env: Env): Promise<Response> {
+    const hub = getHub(env);
+    // Forward the upgrade request to the DO's /connect endpoint
+    const url = new URL(request.url);
+    url.pathname = '/connect';
+    return hub.fetch(new Request(url.toString(), request));
 }
 
 // ---------------------------------------------------------------------------
@@ -269,7 +254,7 @@ async function handleCreatePaste(request: Request, env: Env) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to create paste' }, 500);
-        broadcastEvent('paste_created', { slug });
+        broadcastEvent(env, 'paste_created', { slug });
         return json({ slug, success: true }, 201);
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -328,7 +313,7 @@ async function handleUpdatePaste(request: Request, env: Env, slug: string) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to update paste' }, 500);
-        broadcastEvent('paste_updated', { slug });
+        broadcastEvent(env, 'paste_updated', { slug });
         return json({ success: true });
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -344,7 +329,7 @@ async function handleDeletePaste(request: Request, env: Env, slug: string) {
 
     const result = await env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(slug).run();
     if (!result.success) return json({ error: 'Failed to delete paste' }, 500);
-    broadcastEvent('paste_deleted', { slug });
+    broadcastEvent(env, 'paste_deleted', { slug });
     return json({ success: true });
 }
 
@@ -373,7 +358,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (path === '/api/ping') {
         res = handlePing();
     } else if (path === '/api/stream' && method === 'GET') {
-        return handleSSE(); // Return directly — headers already include CORS
+        return await handleStream(request, env); // WebSocket upgrade → Durable Object
     } else if (path === '/api/auth/login') {
         res = method === 'POST' ? await handleLogin(request, env) : handleAuthCheck(request, env);
     } else if (path === '/api/auth/logout' && method === 'POST') {
@@ -428,3 +413,7 @@ export default {
         }
     },
 };
+
+// Re-export Durable Object so Cloudflare can instantiate it
+export { SSEHub } from './sse-hub';
+

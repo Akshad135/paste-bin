@@ -172,54 +172,19 @@ function json(data: unknown, status = 200, headers?: Record<string, string>) {
 }
 
 // ---------------------------------------------------------------------------
-// SSE (Server-Sent Events) broadcast
+// WebSocket broadcast (replaces SSE for cross-device compatibility)
 // ---------------------------------------------------------------------------
-type SSEClient = ReadableStreamDefaultController<Uint8Array>;
-const sseClients = new Set<SSEClient>();
+const wsClients = new Set<import("bun").ServerWebSocket<unknown>>();
 
 function broadcastEvent(type: string, data?: Record<string, unknown>) {
-  const payload = `data: ${JSON.stringify({ type, ...data })}\n\n`;
-  const encoded = new TextEncoder().encode(payload);
-  for (const client of sseClients) {
+  const payload = JSON.stringify({ type, ...data });
+  for (const ws of wsClients) {
     try {
-      client.enqueue(encoded);
+      ws.send(payload);
     } catch {
-      sseClients.delete(client);
+      wsClients.delete(ws);
     }
   }
-}
-
-function handleSSE(): Response {
-  let ctrl: SSEClient;
-  let heartbeat: ReturnType<typeof setInterval>;
-  const stream = new ReadableStream<Uint8Array>({
-    start(controller) {
-      ctrl = controller;
-      sseClients.add(ctrl);
-      ctrl.enqueue(new TextEncoder().encode(": connected\n\n"));
-      // Send a comment every 30s to keep the connection alive
-      heartbeat = setInterval(() => {
-        try {
-          ctrl.enqueue(new TextEncoder().encode(": heartbeat\n\n"));
-        } catch {
-          clearInterval(heartbeat);
-          sseClients.delete(ctrl);
-        }
-      }, 30_000);
-    },
-    cancel() {
-      clearInterval(heartbeat);
-      sseClients.delete(ctrl);
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive",
-    },
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -416,9 +381,11 @@ async function router(req: Request): Promise<Response> {
 
   let res: Response;
 
-  // /api/events (SSE)
+  // /api/stream — WebSocket upgrade
   if (path === "/api/stream" && method === "GET") {
-    return addCors(handleSSE());
+    const upgraded = server.upgrade(req);
+    if (upgraded) return undefined as unknown as Response;
+    return addCors(new Response("WebSocket upgrade failed", { status: 400 }));
   }
 
   // /api/ping
@@ -470,8 +437,22 @@ console.log(`
   AUTH_KEY loaded from .env / .dev.vars
 `);
 
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
-  idleTimeout: 255, // max — prevents Bun from killing SSE connections
+  idleTimeout: 255, // max — prevents Bun from killing long-lived connections
   fetch: router,
+  websocket: {
+    open(ws) {
+      wsClients.add(ws);
+    },
+    message(ws, message) {
+      // Respond to keepalive pings
+      if (message === "ping") {
+        ws.send("pong");
+      }
+    },
+    close(ws) {
+      wsClients.delete(ws);
+    },
+  },
 });
