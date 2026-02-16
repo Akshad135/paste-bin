@@ -165,6 +165,8 @@ function handleSSE(): Response {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Credentials': 'true',
         },
     });
 }
@@ -371,7 +373,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
     if (path === '/api/ping') {
         res = handlePing();
     } else if (path === '/api/events' && method === 'GET') {
-        res = handleSSE();
+        return handleSSE(); // Return directly — headers already include CORS
     } else if (path === '/api/auth/login') {
         res = method === 'POST' ? await handleLogin(request, env) : handleAuthCheck(request, env);
     } else if (path === '/api/auth/logout' && method === 'POST') {
@@ -406,14 +408,23 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 // ---------------------------------------------------------------------------
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
-        const url = new URL(request.url);
+        try {
+            const url = new URL(request.url);
 
-        // Route API requests
-        if (url.pathname.startsWith('/api/')) {
-            return handleApi(request, env, url);
+            // Route API requests
+            if (url.pathname.startsWith('/api/')) {
+                return handleApi(request, env, url);
+            }
+
+            // Static assets — with SPA fallback
+            const assetResponse = await env.ASSETS.fetch(request);
+            if (assetResponse.status === 404) {
+                // SPA fallback: serve index.html for unknown routes
+                return env.ASSETS.fetch(new Request(new URL('/', request.url)));
+            }
+            return assetResponse;
+        } catch {
+            return new Response('Internal Server Error', { status: 500 });
         }
-
-        // Everything else → static assets (SPA)
-        return env.ASSETS.fetch(request);
     },
 };
