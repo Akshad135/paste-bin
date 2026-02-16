@@ -77,6 +77,8 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        // Note: /api/stream (WebSocket) is NOT proxied here —
+        // the client connects directly to the API server in dev mode.
         '/api': {
           target: 'http://127.0.0.1:8788',
           changeOrigin: true,

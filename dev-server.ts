@@ -172,6 +172,22 @@ function json(data: unknown, status = 200, headers?: Record<string, string>) {
 }
 
 // ---------------------------------------------------------------------------
+// WebSocket broadcast (replaces SSE for cross-device compatibility)
+// ---------------------------------------------------------------------------
+const wsClients = new Set<import("bun").ServerWebSocket<unknown>>();
+
+function broadcastEvent(type: string, data?: Record<string, unknown>) {
+  const payload = JSON.stringify({ type, ...data });
+  for (const ws of wsClients) {
+    try {
+      ws.send(payload);
+    } catch {
+      wsClients.delete(ws);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Route handlers
 // ---------------------------------------------------------------------------
 
@@ -272,6 +288,7 @@ async function handleCreatePaste(req: Request) {
       expiresAt
     );
 
+    broadcastEvent("paste_created", { slug });
     return json({ slug, success: true }, 201);
   } catch {
     return json({ error: "Invalid request" }, 400);
@@ -323,6 +340,7 @@ async function handleUpdatePaste(req: Request, slug: string) {
     updates.push("updated_at = datetime('now')");
 
     db.query(`UPDATE pastes SET ${updates.join(", ")} WHERE slug = ?`).run(...(values as any[]), slug);
+    broadcastEvent("paste_updated", { slug });
     return json({ success: true });
   } catch (err) {
     console.error("Failed to update paste:", err);
@@ -338,6 +356,7 @@ function handleDeletePaste(req: Request, slug: string) {
   if (!existing) return json({ error: "Paste not found" }, 404);
 
   db.query("DELETE FROM pastes WHERE slug = ?").run(slug);
+  broadcastEvent("paste_deleted", { slug });
   return json({ success: true });
 }
 
@@ -361,6 +380,13 @@ async function router(req: Request): Promise<Response> {
   if (method === "OPTIONS") return addCors(new Response(null, { status: 204 }));
 
   let res: Response;
+
+  // /api/stream — WebSocket upgrade
+  if (path === "/api/stream" && method === "GET") {
+    const upgraded = server.upgrade(req);
+    if (upgraded) return undefined as unknown as Response;
+    return addCors(new Response("WebSocket upgrade failed", { status: 400 }));
+  }
 
   // /api/ping
   if (path === "/api/ping") {
@@ -411,7 +437,22 @@ console.log(`
   AUTH_KEY loaded from .env / .dev.vars
 `);
 
-Bun.serve({
+const server = Bun.serve({
   port: PORT,
+  idleTimeout: 255, // max — prevents Bun from killing long-lived connections
   fetch: router,
+  websocket: {
+    open(ws) {
+      wsClients.add(ws);
+    },
+    message(ws, message) {
+      // Respond to keepalive pings
+      if (message === "ping") {
+        ws.send("pong");
+      }
+    },
+    close(ws) {
+      wsClients.delete(ws);
+    },
+  },
 });

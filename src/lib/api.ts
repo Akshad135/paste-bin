@@ -310,4 +310,87 @@ export const api = {
                 body: JSON.stringify({ pinned: pinned ? 1 : 0 }),
             }),
     },
+
+    events: {
+        /**
+         * Subscribe to real-time paste events via WebSocket.
+         * Returns an unsubscribe function to close the connection.
+         */
+        subscribe(onEvent: (event: { type: string; slug?: string }) => void): () => void {
+            // No live sync in demo mode or when offline
+            if (import.meta.env.VITE_DEMO_MODE === 'true' || !navigator.onLine) {
+                return () => { };
+            }
+
+            let ws: WebSocket | null = null;
+            let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+            let pingTimer: ReturnType<typeof setInterval> | null = null;
+            let closed = false;
+
+            function connect() {
+                if (closed) return;
+
+                // Build WebSocket URL.
+                // In dev, Vite proxies HTTP but WS upgrade through http-proxy
+                // can be flaky with Bun — connect directly to the API server.
+                const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = import.meta.env.DEV
+                    ? `ws://127.0.0.1:8788${API_BASE}/stream`
+                    : `${proto}//${location.host}${API_BASE}/stream`;
+
+                ws = new WebSocket(wsUrl);
+
+                ws.onopen = () => {
+                    // Send periodic pings to keep connection alive
+                    // (DO auto-responds with "pong" without waking)
+                    pingTimer = setInterval(() => {
+                        if (ws?.readyState === WebSocket.OPEN) {
+                            ws.send('ping');
+                        }
+                    }, 30_000);
+                };
+
+                ws.onmessage = (e) => {
+                    // Ignore pong responses
+                    if (e.data === 'pong') return;
+                    try {
+                        const data = JSON.parse(e.data);
+                        onEvent(data);
+                    } catch {
+                        // ignore malformed messages
+                    }
+                };
+
+                ws.onclose = () => {
+                    cleanup();
+                    // Auto-reconnect after 2s (unless intentionally closed)
+                    if (!closed) {
+                        reconnectTimer = setTimeout(connect, 2000);
+                    }
+                };
+
+                ws.onerror = () => {
+                    // onclose will fire after onerror — reconnect handled there
+                };
+            }
+
+            function cleanup() {
+                if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
+                if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+            }
+
+            connect();
+
+            // Return unsubscribe function
+            return () => {
+                closed = true;
+                cleanup();
+                if (ws) {
+                    ws.onclose = null; // prevent reconnect
+                    ws.close();
+                    ws = null;
+                }
+            };
+        },
+    },
 };

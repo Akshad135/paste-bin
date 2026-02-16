@@ -13,6 +13,7 @@ interface Env {
     DB: D1Database;
     AUTH_KEY: string;
     ASSETS: { fetch: (request: Request) => Promise<Response> };
+    SSE_HUB: DurableObjectNamespace;
 }
 
 // ---------------------------------------------------------------------------
@@ -119,6 +120,43 @@ function json(data: unknown, status = 200, headers?: Record<string, string>) {
 }
 
 // ---------------------------------------------------------------------------
+// Real-time broadcast via Durable Object (SSEHub)
+// ---------------------------------------------------------------------------
+
+/** Get the singleton SSEHub Durable Object stub. */
+function getHub(env: Env) {
+    const id = env.SSE_HUB.idFromName('global');
+    return env.SSE_HUB.get(id);
+}
+
+/**
+ * Broadcast a paste event to all connected clients via the Durable Object.
+ * Uses ctx.waitUntil() so the broadcast completes even after the response
+ * is returned — without this, CF Workers cancel pending async work.
+ */
+function broadcastEvent(ctx: ExecutionContext, env: Env, type: string, data?: Record<string, unknown>) {
+    ctx.waitUntil(
+        getHub(env)
+            .fetch(new Request('https://sse-hub/broadcast', {
+                method: 'POST',
+                body: JSON.stringify({ type, ...data }),
+            }))
+            .catch(() => { /* DO unavailable — not critical */ }),
+    );
+}
+
+/**
+ * Handle GET /api/stream — proxy the WebSocket upgrade to the Durable Object.
+ */
+async function handleStream(request: Request, env: Env): Promise<Response> {
+    const hub = getHub(env);
+    // Forward the upgrade request to the DO's /connect endpoint
+    const url = new URL(request.url);
+    url.pathname = '/connect';
+    return hub.fetch(new Request(url.toString(), request));
+}
+
+// ---------------------------------------------------------------------------
 // API route handlers
 // ---------------------------------------------------------------------------
 
@@ -181,7 +219,7 @@ async function handleListPastes(request: Request, env: Env, url: URL) {
 }
 
 // POST /api/paste
-async function handleCreatePaste(request: Request, env: Env) {
+async function handleCreatePaste(request: Request, env: Env, ctx: ExecutionContext) {
     if (!isAuthenticated(request, env)) return json({ error: 'Unauthorized' }, 401);
 
     try {
@@ -216,6 +254,7 @@ async function handleCreatePaste(request: Request, env: Env) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to create paste' }, 500);
+        broadcastEvent(ctx, env, 'paste_created', { slug });
         return json({ slug, success: true }, 201);
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -237,7 +276,7 @@ async function handleGetPaste(request: Request, env: Env, slug: string) {
 }
 
 // PUT /api/paste/:slug
-async function handleUpdatePaste(request: Request, env: Env, slug: string) {
+async function handleUpdatePaste(request: Request, env: Env, slug: string, ctx: ExecutionContext) {
     if (!isAuthenticated(request, env)) return json({ error: 'Unauthorized' }, 401);
 
     try {
@@ -274,6 +313,7 @@ async function handleUpdatePaste(request: Request, env: Env, slug: string) {
             .run();
 
         if (!result.success) return json({ error: 'Failed to update paste' }, 500);
+        broadcastEvent(ctx, env, 'paste_updated', { slug });
         return json({ success: true });
     } catch {
         return json({ error: 'Invalid request' }, 400);
@@ -281,7 +321,7 @@ async function handleUpdatePaste(request: Request, env: Env, slug: string) {
 }
 
 // DELETE /api/paste/:slug
-async function handleDeletePaste(request: Request, env: Env, slug: string) {
+async function handleDeletePaste(request: Request, env: Env, slug: string, ctx: ExecutionContext) {
     if (!isAuthenticated(request, env)) return json({ error: 'Unauthorized' }, 401);
 
     const existing = await env.DB.prepare('SELECT id FROM pastes WHERE slug = ?').bind(slug).first();
@@ -289,13 +329,14 @@ async function handleDeletePaste(request: Request, env: Env, slug: string) {
 
     const result = await env.DB.prepare('DELETE FROM pastes WHERE slug = ?').bind(slug).run();
     if (!result.success) return json({ error: 'Failed to delete paste' }, 500);
+    broadcastEvent(ctx, env, 'paste_deleted', { slug });
     return json({ success: true });
 }
 
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
-async function handleApi(request: Request, env: Env, url: URL): Promise<Response> {
+async function handleApi(request: Request, env: Env, url: URL, ctx: ExecutionContext): Promise<Response> {
     const path = url.pathname;
     const method = request.method;
 
@@ -316,12 +357,14 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
     if (path === '/api/ping') {
         res = handlePing();
+    } else if (path === '/api/stream' && method === 'GET') {
+        return await handleStream(request, env); // WebSocket upgrade → Durable Object
     } else if (path === '/api/auth/login') {
         res = method === 'POST' ? await handleLogin(request, env) : handleAuthCheck(request, env);
     } else if (path === '/api/auth/logout' && method === 'POST') {
         res = handleLogout();
     } else if (path === '/api/paste' || path === '/api/paste/') {
-        res = method === 'POST' ? await handleCreatePaste(request, env) : await handleListPastes(request, env, url);
+        res = method === 'POST' ? await handleCreatePaste(request, env, ctx) : await handleListPastes(request, env, url);
     } else if (path.startsWith('/api/paste/')) {
         const slug = path.replace('/api/paste/', '').replace(/\/$/, '');
         if (!slug) {
@@ -329,9 +372,9 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
         } else if (method === 'GET') {
             res = await handleGetPaste(request, env, slug);
         } else if (method === 'PUT') {
-            res = await handleUpdatePaste(request, env, slug);
+            res = await handleUpdatePaste(request, env, slug, ctx);
         } else if (method === 'DELETE') {
-            res = await handleDeletePaste(request, env, slug);
+            res = await handleDeletePaste(request, env, slug, ctx);
         } else {
             res = json({ error: 'Method not allowed' }, 405);
         }
@@ -349,15 +392,28 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 // Worker export
 // ---------------------------------------------------------------------------
 export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
-        const url = new URL(request.url);
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+        try {
+            const url = new URL(request.url);
 
-        // Route API requests
-        if (url.pathname.startsWith('/api/')) {
-            return handleApi(request, env, url);
+            // Route API requests
+            if (url.pathname.startsWith('/api/')) {
+                return handleApi(request, env, url, ctx);
+            }
+
+            // Static assets — with SPA fallback
+            const assetResponse = await env.ASSETS.fetch(request);
+            if (assetResponse.status === 404) {
+                // SPA fallback: serve index.html for unknown routes
+                return env.ASSETS.fetch(new Request(new URL('/', request.url)));
+            }
+            return assetResponse;
+        } catch {
+            return new Response('Internal Server Error', { status: 500 });
         }
-
-        // Everything else → static assets (SPA)
-        return env.ASSETS.fetch(request);
     },
 };
+
+// Re-export Durable Object so Cloudflare can instantiate it
+export { SSEHub } from './sse-hub';
+
