@@ -417,7 +417,7 @@ async function router(req: Request): Promise<Response> {
   let res: Response;
 
   // /api/events (SSE)
-  if (path === "/api/events" && method === "GET") {
+  if (path === "/api/stream" && method === "GET") {
     return addCors(handleSSE());
   }
 

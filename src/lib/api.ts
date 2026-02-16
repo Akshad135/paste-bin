@@ -322,7 +322,7 @@ export const api = {
                 return () => { };
             }
 
-            const es = new EventSource(`${API_BASE}/events`);
+            const es = new EventSource(`${API_BASE}/stream`);
 
             es.onmessage = (e) => {
                 try {

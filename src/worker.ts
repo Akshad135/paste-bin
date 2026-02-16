@@ -372,7 +372,7 @@ async function handleApi(request: Request, env: Env, url: URL): Promise<Response
 
     if (path === '/api/ping') {
         res = handlePing();
-    } else if (path === '/api/events' && method === 'GET') {
+    } else if (path === '/api/stream' && method === 'GET') {
         return handleSSE(); // Return directly — headers already include CORS
     } else if (path === '/api/auth/login') {
         res = method === 'POST' ? await handleLogin(request, env) : handleAuthCheck(request, env);
