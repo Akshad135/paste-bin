@@ -21,7 +21,7 @@ bindings = [
 
 [[migrations]]
 tag = "v1"
-new_classes = ["SSEHub"]
+new_sqlite_classes = ["SSEHub"]
 
 [observability]
 enabled = false
