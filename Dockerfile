@@ -15,7 +15,7 @@ RUN npm run build
 # ==============================================================================
 # Stage 2: Build the Rust backend
 # ==============================================================================
-FROM rust:1.76-alpine AS backend-builder
+FROM rust:alpine AS backend-builder
 WORKDIR /app
 
 # Install dependencies for sqlx and compilation
