@@ -24,6 +24,7 @@ RUN apk add --no-cache musl-dev sqlite-dev pkgconfig
 # Copy Cargo files and source
 COPY Cargo.toml Cargo.lock* ./
 COPY src-rust ./src-rust
+COPY schema.sql ./
 
 # Build release binary
 RUN cargo build --release
