@@ -31,3 +31,8 @@ dist-ssr
 
 # Windows reserved names
 nul
+
+
+# Added by cargo
+
+/target

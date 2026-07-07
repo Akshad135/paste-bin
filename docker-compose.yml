@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  pastebin:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pastebin-server
+    ports:
+      - "${PORT:-8788}:8788"
+    volumes:
+      - pastebin-data:/app/data
+    environment:
+      - AUTH_KEY=${AUTH_KEY:-change_me_to_a_secure_passphrase}
+      - RUST_LOG=info
+    restart: unless-stopped
+
+volumes:
+  pastebin-data:
