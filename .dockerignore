@@ -1,0 +1,21 @@
+# Never send local secrets/state into the Docker build context.
+.env
+.env.local
+.dev.vars
+data/
+
+# VCS / editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Build artifacts / dependencies (reinstalled/rebuilt inside the image)
+node_modules
+dist
+dist-ssr
+target
+
+# Logs
+*.log
+log.log
