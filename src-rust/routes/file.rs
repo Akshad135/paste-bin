@@ -208,20 +208,35 @@ pub async fn handle_download(
     //   paste that has been explicitly shared (shared_encrypted_key is set).
     // - Files not yet linked to any paste (e.g. uploaded but not attached)
     //   are never accessible without authentication.
-    if !auth::is_authenticated(&headers, &state.auth_key) {
-        let is_publicly_shared = match &file.paste_slug {
-            Some(paste_slug) => {
-                let shared: Option<(Option<String>,)> =
-                    sqlx::query_as("SELECT shared_encrypted_key FROM pastes WHERE slug = ?")
-                        .bind(paste_slug)
-                        .fetch_optional(&state.db)
-                        .await
-                        .unwrap_or(None);
-                matches!(shared, Some((Some(_),)))
-            }
-            None => false,
-        };
+    let mut paste_is_expired = false;
+    let mut is_publicly_shared = false;
 
+    if let Some(paste_slug) = &file.paste_slug {
+        let paste_info: Option<(Option<String>, Option<String>)> =
+            sqlx::query_as("SELECT shared_encrypted_key, expires_at FROM pastes WHERE slug = ?")
+                .bind(paste_slug)
+                .fetch_optional(&state.db)
+                .await
+                .unwrap_or(None);
+
+        if let Some((shared_key, expires_at)) = paste_info {
+            is_publicly_shared = shared_key.is_some();
+
+            if let Some(exp) = expires_at {
+                paste_is_expired = sqlx::query_scalar("SELECT ? <= datetime('now')")
+                    .bind(exp)
+                    .fetch_one(&state.db)
+                    .await
+                    .unwrap_or(false);
+            }
+        }
+    }
+
+    if paste_is_expired {
+        return json_error(StatusCode::GONE, "The associated paste has expired").into_response();
+    }
+
+    if !auth::is_authenticated(&headers, &state.auth_key) {
         if !is_publicly_shared {
             return json_error(StatusCode::FORBIDDEN, "This file is private").into_response();
         }

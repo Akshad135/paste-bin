@@ -121,6 +121,43 @@ async fn main() {
     // ── Shared state ───────────────────────────────────────────────────
     let state = Arc::new(AppState::new(pool, auth_key, dist_dir, uploads_dir, max_upload_size, salt));
 
+    // ── Background Cleanup Task ────────────────────────────────────────
+    let cleanup_state = state.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60 * 60)); // 1 hour
+        loop {
+            interval.tick().await;
+            tracing::info!("Running cleanup task for expired pastes...");
+            
+            let expired_pastes: Result<Vec<(String,)>, _> = sqlx::query_as(
+                "SELECT slug FROM pastes WHERE expires_at <= datetime('now')"
+            )
+            .fetch_all(&cleanup_state.db)
+            .await;
+
+            match expired_pastes {
+                Ok(pastes) => {
+                    for (slug,) in pastes {
+                        tracing::info!("Cleaning up expired paste: {}", slug);
+                        
+                        // Delete associated files from disk first
+                        routes::file::delete_files_for_paste(&cleanup_state.db, &cleanup_state.uploads_dir, &slug).await;
+                        
+                        // Delete from DB (which may CASCADE delete `files` records)
+                        if let Err(e) = sqlx::query("DELETE FROM pastes WHERE slug = ?")
+                            .bind(&slug)
+                            .execute(&cleanup_state.db)
+                            .await
+                        {
+                            tracing::error!("Failed to delete expired paste {} from DB: {}", slug, e);
+                        }
+                    }
+                }
+                Err(e) => tracing::error!("Failed to fetch expired pastes: {}", e),
+            }
+        }
+    });
+
     // ── Router ─────────────────────────────────────────────────────────
     let app = Router::new()
         .nest("/api", routes::api_router())

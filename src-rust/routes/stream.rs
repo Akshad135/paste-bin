@@ -1,18 +1,25 @@
 use std::sync::Arc;
 use axum::{
     extract::{State, WebSocketUpgrade, ws::{Message, WebSocket}},
+    http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
 use futures::{sink::SinkExt, stream::StreamExt};
 
 use crate::state::AppState;
+use crate::auth;
 
 /// GET /api/stream — upgrade to a WebSocket connection.
 pub async fn handle_stream(
     ws: WebSocketUpgrade,
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
-) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_socket(socket, state))
+) -> axum::response::Response {
+    if !auth::is_authenticated(&headers, &state.auth_key) {
+        return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+    }
+
+    ws.on_upgrade(move |socket| handle_socket(socket, state)).into_response()
 }
 
 async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
