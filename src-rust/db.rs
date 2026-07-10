@@ -39,9 +39,10 @@ pub async fn run_migrations(pool: &SqlitePool) {
             .unwrap_or_else(|e| panic!("Failed to run migration: {e}\nStatement: {trimmed}"));
     }
 
-    // Migration: add shared_encrypted_key for existing databases
+    // Migration: add shared_encrypted_key for existing databases and create index
     let alter_statements = [
         "ALTER TABLE pastes ADD COLUMN shared_encrypted_key TEXT",
+        "CREATE INDEX IF NOT EXISTS idx_pastes_expires_at ON pastes(expires_at)",
     ];
 
     for stmt in &alter_statements {

@@ -27,3 +27,5 @@ CREATE TABLE IF NOT EXISTS files (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (paste_slug) REFERENCES pastes(slug) ON DELETE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_pastes_expires_at ON pastes(expires_at);

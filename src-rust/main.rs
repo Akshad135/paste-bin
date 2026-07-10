@@ -124,7 +124,7 @@ async fn main() {
     // ── Background Cleanup Task ────────────────────────────────────────
     let cleanup_state = state.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60 * 60)); // 1 hour
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10)); // 10 seconds
         loop {
             interval.tick().await;
             tracing::info!("Running cleanup task for expired pastes...");
