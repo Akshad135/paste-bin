@@ -5,9 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:demo": "cross-env VITE_DEMO_MODE=true vite",
     "build": "tsc -b && vite build",
-    "build:demo": "cross-env VITE_DEMO_MODE=true tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
     "dev:backend": "cargo run",

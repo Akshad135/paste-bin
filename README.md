@@ -1,106 +1,130 @@
 # pastebin
 
-A self-hosted, private-first pastebin with syntax highlighting. Deploy on Cloudflare for free, or run it anywhere with Bun.
-
-<div align="center">
-
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Akshad135/paste-bin)
-
-</div>
+> A fast, self-hosted, private-first pastebin with syntax highlighting, file attachments, and End-to-End Encryption (E2EE), powered by Rust and React.
 
 ## Features
 
-- **Syntax highlighting** — 50+ languages via [Shiki](https://shiki.style)
-- **Single-user auth** — passphrase-protected, no accounts needed
-- **PWA** — installable on mobile (Samsung Internet, Chrome, etc.)
-- **Offline support** — cached pastes viewable without internet
-- **5 color palettes** — dark and light modes for each
-- **Pin pastes** — keep important pastes at the top
-- **Public / private** — share pastes or keep them to yourself
-- **Responsive** — works on desktop, tablet, and mobile
-- **Zero tracking** — no analytics, no cookies beyond auth
+- Backend powered by Rust and SQLite
+- Syntax highlighting for 50+ languages via [Shiki](https://shiki.style)
+- File attachments with configurable size limits
+- End-to-End Encryption (E2EE) derived from your auth passphrase
+- Single-user authentication (no accounts needed)
+- PWA support for mobile and desktop installation
+- Offline support for cached pastes
+- Pin important pastes to the top
+- Public and private visibility modes
+- Zero tracking (no analytics, no tracking cookies)
 
 ## Screenshots
 
 <div align="center">
 
-![Tokyo Night Dark](public/themes/tokyo-night-dark.png)
+![Tokyo Night Dark](public/themes/dark-tokyo.png)
 
-*Tokyo Night — Dark*
+_Tokyo Night (Dark)_
 
-![Catppuccin Light](public/themes/catppuccin-light.png)
+![Catppuccin Light](public/themes/light-catppuccin.png)
 
-*Catppuccin — Light*
-
-</div>
-
-**Other themes:** [Catppuccin Dark](public/themes/catppuccin-dark.png) · [Dracula Dark](public/themes/dracula-dark.png) · [Dracula Light](public/themes/dracula-light.png) · [Nord Dark](public/themes/nord-dark.png) · [Nord Light](public/themes/nord-light.png) · [Tokyo Night Light](public/themes/tokyo-night-light.png) · [Shadcn Dark](public/themes/shadcn-dark.png) · [Shadcn Light](public/themes/shadcn-light.png)
-
-## Deploy — One Click
-
-Click the deploy button above, set your `AUTH_KEY` secret when prompted, and you're done. Cloudflare automatically creates the D1 database and runs migrations.
-
-<div align="center">
-
-![Cloudflare Deploy](public/cf-deploy.png)
+_Catppuccin Latte (Light)_
 
 </div>
 
-Cloudflare D1's free tier gives you 500 MB of storage — enough for roughly **100,000 pastes** at ~5 KB each.
+<details>
+<summary><b>View All 18 Themes</b></summary>
 
-## Local Development
+> *Themes ported from [herdr](https://github.com/ogulcancelik/herdr).*
+
+### Dark Themes
+
+- [Catppuccin](public/themes/dark-catppuccin.png)
+- [Dracula](public/themes/dark-dracula.png)
+- [Gruvbox](public/themes/dark-gruvbox.png)
+- [Kanagawa](public/themes/dark-kanagawa.png)
+- [Nord](public/themes/dark-nord.png)
+- [One Dark](public/themes/dark-one.png)
+- [Rosé Pine](public/themes/dark-rose-pine.png)
+- [Solarized](public/themes/dark-solarized.png)
+- [Terminal](public/themes/dark-terminal.png)
+- [Tokyo Night](public/themes/dark-tokyo.png)
+- [Vesper](public/themes/dark-vesper.png)
+
+### Light Themes
+
+- [Catppuccin Latte](public/themes/light-catppuccin.png)
+- [Gruvbox Light](public/themes/light-gruvbox.png)
+- [Kanagawa Lotus](public/themes/light-kanagawa.png)
+- [One Light](public/themes/light-one.png)
+- [Rosé Pine Dawn](public/themes/light-rose-pine.png)
+- [Solarized Light](public/themes/light-solarized.png)
+- [Tokyo Day](public/themes/light-tokyo.png)
+</details>
+
+## Getting Started (Docker)
+
+You can run pastebin by pulling the pre-built Docker image or by building it yourself.
+
+### Using Pre-built Image
+
+```bash
+docker run -d \
+  -p 8788:8788 \
+  -v pastebin-data:/app/data \
+  -e AUTH_KEY="your_secure_passphrase" \
+  akshad135/pastebin
+```
+
+### Build from Source
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/Akshad135/paste-bin.git
+   cd paste-bin
+   ```
+
+2. Start the services via Docker Compose:
+
+   ```bash
+   # Make sure to set a secure AUTH_KEY. This protects login and derives the encryption key.
+   AUTH_KEY="your_secure_passphrase" docker-compose up -d
+   ```
+
+3. Open `http://localhost:8788` in your browser.
+
+> **Note:** You can also define `AUTH_KEY`, `MAX_TEXT_SIZE`, and `MAX_FILE_SIZE` in an `.env` file in the root directory.
+
+## Local Build
+
+If you want to run the project natively or contribute to the development, you will need **Node.js** and **Rust**.
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) (v1.0+)
+- Node.js & npm
+- Rust (`cargo`)
 
 ### Setup
 
 ```bash
-# Install dependencies
-bun install
+# 1. Install frontend dependencies
+npm install
 
-# Set your auth passphrase (.env is gitignored)
-cp .env.example .env
+# 2. Start the Rust backend (runs on :8788 by default)
+# Make sure to set the AUTH_KEY environment variable.
+AUTH_KEY="your_secure_passphrase" npm run dev:backend
 
-# Run local DB migration
-bun run db:migrate:local
-
-# Start the API server (terminal 1)
-bun run dev:api
-
-# Start the frontend (terminal 2)
-bun run dev
+# 3. Start the Vite frontend in a new terminal
+npm run dev
 ```
 
-Open `http://localhost:5173` — the frontend proxies API requests to the dev server on `:8788`.
-
-### Windows (PowerShell)
-
-```powershell
-.\setup.ps1
-```
+Visit `http://localhost:5173` to see the frontend. API requests are automatically proxied to the backend.
 
 ## Configuration
 
-Branding is configured in [`config.yaml`](config.yaml) (committed to the repo). Edit it to customize your instance — app name, description, icons, etc.
+Branding is configured in [`config.yaml`](config.yaml) (committed to the repo). Edit it to customize your instance (app name, description, icons, etc).
 
-Secrets like `AUTH_KEY` go in `.env` (gitignored) for local dev, or in Cloudflare dashboard secrets for production.
+For backend limits, you can adjust environment variables:
 
-| File | Purpose | Committed? |
-|------|---------|------------|
-| `config.yaml` | Branding, icons, app name | Yes |
-| `.env` | `AUTH_KEY` secret | No (gitignored) |
-| `.dev.vars` | Secrets for `wrangler dev` | No (gitignored) |
+- `MAX_TEXT_SIZE`: Max size in bytes for a text paste (Default: 512 KB).
+- `MAX_FILE_SIZE`: Max size in bytes for a single file attachment (Default: 50 MB).
 
 > **Icons**: Drop your own images into `public/` and update `config.yaml`. The bundled ghost icon is used by default and adapts its color to the active theme.
-
-## Tech Stack
-
-| Layer | Tech |
-|-------|------|
-| Frontend | React 19, Vite, TypeScript, Tailwind CSS |
-| Backend | Cloudflare Workers (prod) / Bun (dev) |
-| Database | Cloudflare D1 (SQLite) |
-| Syntax highlighting | Shiki |
-| Icons | Lucide React |
