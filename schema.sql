@@ -8,12 +8,7 @@ CREATE TABLE IF NOT EXISTS pastes (
     expires_at TEXT,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    is_file INTEGER NOT NULL DEFAULT 0,
-    file_name TEXT,
-    mime_type TEXT,
-    file_size INTEGER,
     encrypted_paste_key TEXT NOT NULL,
-    encrypted_preview TEXT,
     share_wrapped_paste_key TEXT,
     share_auth_salt TEXT,
     share_auth_verifier TEXT

@@ -12,10 +12,7 @@ export interface Paste {
   expires_at: string | null;
   created_at: string;
   updated_at: string;
-  is_file: number;
-  file_name: string | null;
-  mime_type: string | null;
-  file_size: number | null;
+
   file_count?: number;
   encrypted_paste_key?: string | null;
   share_wrapped_paste_key?: string | null;

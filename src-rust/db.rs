@@ -42,9 +42,14 @@ pub async fn run_migrations(pool: &SqlitePool) {
     // Column migrations: add new columns for existing databases.
     // Each statement ignores "duplicate column name" so it is idempotent.
     let alter_statements = [
-        // Legacy column (kept for read-back compatibility during rollout, can be
-        // dropped in a future migration once all rows have been migrated).
-        "ALTER TABLE pastes ADD COLUMN shared_encrypted_key TEXT",
+        // Drop legacy columns that are no longer used
+        "ALTER TABLE pastes DROP COLUMN is_file",
+        "ALTER TABLE pastes DROP COLUMN file_name",
+        "ALTER TABLE pastes DROP COLUMN mime_type",
+        "ALTER TABLE pastes DROP COLUMN file_size",
+        "ALTER TABLE pastes DROP COLUMN encrypted_preview",
+        "ALTER TABLE pastes DROP COLUMN shared_encrypted_key",
+        
         // New secure-share columns
         "ALTER TABLE pastes ADD COLUMN share_wrapped_paste_key TEXT",
         "ALTER TABLE pastes ADD COLUMN share_auth_salt TEXT",

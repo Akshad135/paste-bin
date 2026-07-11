@@ -212,9 +212,6 @@ pub async fn handle_download(
     // - Authenticated (owner) requests can always download.
     // - Unauthenticated requests are only allowed if the file is linked to a
     //   paste that has an active new-scheme share (share_wrapped_paste_key is set).
-    //   The legacy `shared_encrypted_key` column is intentionally NOT checked here
-    //   — revoke/re-share always clears it, so trusting it would allow stale
-    //   old-scheme grants to bypass revocation.
     // - Files not yet linked to any paste (e.g. uploaded but not attached)
     //   are never accessible without authentication.
     let mut paste_is_expired = false;

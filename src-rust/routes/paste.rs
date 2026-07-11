@@ -30,10 +30,6 @@ pub struct Paste {
     pub expires_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
-    pub is_file: i32,
-    pub file_name: Option<String>,
-    pub mime_type: Option<String>,
-    pub file_size: Option<i64>,
     pub encrypted_paste_key: Option<String>,
     pub share_wrapped_paste_key: Option<String>,
     pub share_auth_salt: Option<String>,
@@ -52,10 +48,6 @@ pub struct PasteListItem {
     pub expires_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
-    pub is_file: i32,
-    pub file_name: Option<String>,
-    pub mime_type: Option<String>,
-    pub file_size: Option<i64>,
     pub encrypted_paste_key: Option<String>,
     pub share_wrapped_paste_key: Option<String>,
 }
@@ -126,7 +118,6 @@ pub async fn handle_list(
     let query = format!(
         "SELECT id, slug, title, content, language, pinned, expires_at, \
          created_at, updated_at, \
-         is_file, file_name, mime_type, file_size, \
          encrypted_paste_key, share_wrapped_paste_key \
          FROM pastes WHERE {NOT_EXPIRED_CLAUSE} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?"
     );
@@ -265,7 +256,7 @@ pub async fn handle_create(
 
 /// GET /api/paste/:slug — get a single paste.
 /// Authenticated users can see any paste.
-/// Unauthenticated users can only see shared pastes (shared_encrypted_key is not NULL).
+/// Unauthenticated users can only see shared pastes (share_wrapped_paste_key is not NULL).
 pub async fn handle_get(
     State(state): State<Arc<AppState>>,
     headers: HeaderMap,
@@ -512,15 +503,12 @@ pub async fn handle_update(
     }
     if let Some(ref share_wrapped) = body.share_wrapped_paste_key {
         if share_wrapped == "__revoke__" {
-            // Revoke: clear all share fields atomically — both new-scheme and
-            // legacy columns so old-scheme grants cannot survive a revoke.
+            // Revoke: clear all share fields atomically.
             updates.push("share_wrapped_paste_key = NULL".to_string());
             updates.push("share_auth_salt = NULL".to_string());
             updates.push("share_auth_verifier = NULL".to_string());
-            updates.push("shared_encrypted_key = NULL".to_string());
         } else {
-            // Share: store the new-scheme fields and simultaneously clear the
-            // legacy column so it cannot be used as a bypass.
+            // Share: store the new-scheme fields.
             updates.push("share_wrapped_paste_key = ?".to_string());
             values.push(share_wrapped.clone());
             if let Some(ref salt) = body.share_auth_salt {
@@ -531,9 +519,6 @@ pub async fn handle_update(
                 updates.push("share_auth_verifier = ?".to_string());
                 values.push(verifier.clone());
             }
-            // Clear the legacy column so any previously-shared paste cannot
-            // be accessed via the old unauthenticated file-download path.
-            updates.push("shared_encrypted_key = NULL".to_string());
         }
     }
     if let Some(pinned) = body.pinned {
