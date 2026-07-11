@@ -96,6 +96,11 @@ export function EditPaste() {
     const loadPaste = async () => {
         setLoading(true);
         setError('');
+        // Reset attachment state before loading so that switching between
+        // /edit/:slug routes never carries over files or queued removals from
+        // the previously-viewed paste (React Router reuses this component).
+        setAttachments([]);
+        setRemovedSlugs([]);
         try {
             const result = await api.paste.get(slug!);
             const p = result.data.paste;

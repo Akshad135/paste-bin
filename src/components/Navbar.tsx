@@ -203,7 +203,7 @@ export function Navbar() {
                                 <PaletteIcon size={16} />
                             </Button>
 
-                            {!isEffectivelyOffline && isAuthenticated && (
+                            {isAuthenticated && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -214,7 +214,7 @@ export function Navbar() {
                                     Logout
                                 </Button>
                             )}
-                            {!isEffectivelyOffline && !isAuthenticated && (
+                            {!isAuthenticated && (
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -240,13 +240,13 @@ export function Navbar() {
                                     <PaletteIcon size={16} className="mr-2" /> Change Theme
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                {/* Auth — hidden when offline */}
-                                {!isEffectivelyOffline && isAuthenticated && (
+                                {/* Auth — available online and offline */}
+                                {isAuthenticated && (
                                     <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                         <LogoutIcon size={16} className="mr-2" /> Logout
                                     </DropdownMenuItem>
                                 )}
-                                {!isEffectivelyOffline && !isAuthenticated && (
+                                {!isAuthenticated && (
                                     <DropdownMenuItem onClick={() => setIsLoginOpen(true)}>
                                         <KeyIcon size={16} className="mr-2" /> Login
                                     </DropdownMenuItem>

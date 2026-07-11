@@ -64,6 +64,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         if (!masterKeyRef.current) {
           const mk = await loadMasterKey();
           setMasterKey(mk);
+          // Re-arm the session marker that was cleared when sessionStorage was
+          // wiped on browser restart. Without this, offline cache writes remain
+          // gated and silently skip after every page reload.
+          if (mk) markSessionActive();
         }
       } else {
         localStorage.removeItem("e2ee_salt");

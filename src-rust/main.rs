@@ -136,33 +136,50 @@ async fn main() {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(10)); // 10 seconds
         loop {
             interval.tick().await;
-            tracing::info!("Running cleanup task for expired pastes...");
-            
-            let expired_pastes: Result<Vec<(String,)>, _> = sqlx::query_as(
-                "SELECT slug FROM pastes WHERE expires_at <= datetime('now')"
+            tracing::info!("Running cleanup task...");
+
+            // Single pass: collect every file slug that belongs to an expired
+            // paste OR was never linked to any paste at all (orphaned upload).
+            // Both cases are equally garbage at this point.
+            let stale_files: Result<Vec<(String,)>, _> = sqlx::query_as(
+                "SELECT f.slug FROM files f
+                 LEFT JOIN pastes p ON f.paste_slug = p.slug
+                 WHERE (p.expires_at IS NOT NULL AND p.expires_at <= datetime('now'))
+                    OR f.paste_slug IS NULL"
             )
             .fetch_all(&cleanup_state.db)
             .await;
 
-            match expired_pastes {
-                Ok(pastes) => {
-                    for (slug,) in pastes {
-                        tracing::info!("Cleaning up expired paste: {}", slug);
-                        
-                        // Delete associated files from disk first
-                        routes::file::delete_files_for_paste(&cleanup_state.db, &cleanup_state.uploads_dir, &slug).await;
-                        
-                        // Delete from DB (which may CASCADE delete `files` records)
-                        if let Err(e) = sqlx::query("DELETE FROM pastes WHERE slug = ?")
+            match stale_files {
+                Ok(files) => {
+                    for (slug,) in files {
+                        tracing::info!("Deleting stale file: {}", slug);
+                        let path = std::path::Path::new(&cleanup_state.uploads_dir).join(&slug);
+                        if path.exists() {
+                            if let Err(e) = tokio::fs::remove_file(&path).await {
+                                tracing::warn!("Failed to remove file {} from disk: {e}", slug);
+                            }
+                        }
+                        if let Err(e) = sqlx::query("DELETE FROM files WHERE slug = ?")
                             .bind(&slug)
                             .execute(&cleanup_state.db)
                             .await
                         {
-                            tracing::error!("Failed to delete expired paste {} from DB: {}", slug, e);
+                            tracing::error!("Failed to remove file {} from DB: {}", slug, e);
                         }
                     }
                 }
-                Err(e) => tracing::error!("Failed to fetch expired pastes: {}", e),
+                Err(e) => tracing::error!("Failed to fetch stale files: {}", e),
+            }
+
+            // Now remove the expired paste rows themselves (files are already gone).
+            if let Err(e) = sqlx::query(
+                "DELETE FROM pastes WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')"
+            )
+            .execute(&cleanup_state.db)
+            .await
+            {
+                tracing::error!("Failed to delete expired pastes from DB: {}", e);
             }
         }
     });
