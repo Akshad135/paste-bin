@@ -1,9 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { useOffline } from '@/lib/offlineContext';
 import { api, type Paste } from '@/lib/api';
 import { unwrapPasteKey, decryptText, encryptText, encryptBytes } from '@/lib/crypto';
 import { LANGUAGES, EXPIRATION_OPTIONS } from '@/lib/constants';
+import { config } from '@/lib/config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +55,7 @@ interface Attachment {
 export function EditPaste() {
     const { slug } = useParams<{ slug: string }>();
     const { isAuthenticated, masterKey, isLoading: authLoading } = useAuth();
+    const { isEffectivelyOffline } = useOffline();
     const navigate = useNavigate();
 
     const [paste, setPaste] = useState<Paste | null>(null);
@@ -137,6 +140,11 @@ export function EditPaste() {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (isEffectivelyOffline) {
+            toast.error('You are offline. Please reconnect to save changes.');
+            return;
+        }
+
         if (attachments.some(a => a.uploading)) {
             toast.error('Please wait for files to finish uploading');
             return;
@@ -151,19 +159,22 @@ export function EditPaste() {
         try {
             if (!pasteKey) throw new Error("Encryption key missing");
 
+            const contentBytes = new Blob([content]).size;
+            if (contentBytes > config.maxTextSize) {
+                toast.error(`Text content is too large (${(contentBytes / 1024).toFixed(1)} KB). Maximum is ${config.maxTextSize / 1024} KB. Please attach large content as a file instead.`);
+                return;
+            }
+
             const new_file_slugs = attachments
                 .filter(a => a.isNew && !a.error && a.slug)
                 .map(a => a.slug as string);
 
             const encTitle = title.trim() ? await encryptText(pasteKey, title.trim()) : '';
             const encContent = content ? await encryptText(pasteKey, content) : '';
-            const previewText = content.trim().substring(0, 200);
-            const encPreview = previewText ? await encryptText(pasteKey, previewText) : '';
 
             await api.paste.update(slug!, {
                 title: encTitle,
                 content: encContent,
-                encrypted_preview: encPreview,
                 language,
                 pinned: isPinned ? 1 : 0,
                 expires_in: expiresIn === '__current__' ? undefined : expiresIn,
@@ -206,6 +217,10 @@ export function EditPaste() {
     };
 
     const processFiles = async (files: FileList) => {
+        if (isEffectivelyOffline) {
+            toast.error('You are offline. File uploads require a connection.');
+            return;
+        }
         if (!pasteKey) {
             toast.error('Encryption key not ready');
             return;

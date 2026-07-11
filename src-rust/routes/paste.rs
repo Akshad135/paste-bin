@@ -35,13 +35,12 @@ pub struct Paste {
     pub mime_type: Option<String>,
     pub file_size: Option<i64>,
     pub encrypted_paste_key: Option<String>,
-    pub encrypted_preview: Option<String>,
     pub share_wrapped_paste_key: Option<String>,
     pub share_auth_salt: Option<String>,
     pub share_auth_verifier: Option<String>,
 }
 
-/// A lighter version returned from list queries (includes preview).
+/// A lighter version returned from list queries.
 #[derive(Debug, Serialize, FromRow)]
 pub struct PasteListItem {
     pub id: i64,
@@ -53,13 +52,11 @@ pub struct PasteListItem {
     pub expires_at: Option<String>,
     pub created_at: String,
     pub updated_at: String,
-    pub preview: Option<String>,
     pub is_file: i32,
     pub file_name: Option<String>,
     pub mime_type: Option<String>,
     pub file_size: Option<i64>,
     pub encrypted_paste_key: Option<String>,
-    pub encrypted_preview: Option<String>,
     pub share_wrapped_paste_key: Option<String>,
 }
 
@@ -78,7 +75,6 @@ pub struct CreatePasteBody {
     expires_in: Option<String>,
     file_slugs: Option<Vec<String>>,
     encrypted_paste_key: Option<String>,
-    encrypted_preview: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -91,7 +87,6 @@ pub struct UpdatePasteBody {
     new_file_slugs: Option<Vec<String>>,
     removed_file_slugs: Option<Vec<String>>,
     encrypted_paste_key: Option<String>,
-    encrypted_preview: Option<String>,
     /// New-arch share fields. Set to "__revoke__" to clear sharing.
     share_wrapped_paste_key: Option<String>,
     share_auth_salt: Option<String>,
@@ -129,10 +124,10 @@ pub async fn handle_list(
     let offset = (page - 1) * limit;
 
     let query = format!(
-        "SELECT id, slug, title, '' as content, language, pinned, expires_at, \
-         created_at, updated_at, encrypted_preview as preview, \
+        "SELECT id, slug, title, content, language, pinned, expires_at, \
+         created_at, updated_at, \
          is_file, file_name, mime_type, file_size, \
-         encrypted_paste_key, encrypted_preview, share_wrapped_paste_key \
+         encrypted_paste_key, share_wrapped_paste_key \
          FROM pastes WHERE {NOT_EXPIRED_CLAUSE} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?"
     );
 
@@ -191,6 +186,18 @@ pub async fn handle_create(
         return json_error(StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
     }
 
+    // Validate text size against the configured limit.
+    if body.content.len() > state.max_text_size {
+        return json_error(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            &format!(
+                "Text content too large. Maximum is {} KB. For larger content, attach it as a file.",
+                state.max_text_size / 1_024
+            ),
+        )
+        .into_response();
+    }
+
     let has_files = body.file_slugs.as_ref().map(|f| !f.is_empty()).unwrap_or(false);
     if body.content.trim().is_empty() && !has_files {
         return json_error(StatusCode::BAD_REQUEST, "Content or files are required").into_response();
@@ -217,8 +224,8 @@ pub async fn handle_create(
     let pinned = if body.pinned.unwrap_or(0) != 0 { 1 } else { 0 };
 
     let result = sqlx::query(
-        "INSERT INTO pastes (slug, title, content, language, pinned, expires_at, encrypted_paste_key, encrypted_preview) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO pastes (slug, title, content, language, pinned, expires_at, encrypted_paste_key) \
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&slug)
     .bind(&title)
@@ -227,7 +234,6 @@ pub async fn handle_create(
     .bind(pinned)
     .bind(&expires_at)
     .bind(&body.encrypted_paste_key)
-    .bind(&body.encrypted_preview)
     .execute(&state.db)
     .await;
 
@@ -481,6 +487,16 @@ pub async fn handle_update(
         values.push(title.clone());
     }
     if let Some(ref content) = body.content {
+        if content.len() > state.max_text_size {
+            return json_error(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                &format!(
+                    "Text content too large. Maximum is {} KB. For larger content, attach it as a file.",
+                    state.max_text_size / 1_024
+                ),
+            )
+            .into_response();
+        }
         updates.push("content = ?".to_string());
         values.push(content.clone());
     }
@@ -533,10 +549,6 @@ pub async fn handle_update(
     if let Some(ref encrypted_paste_key) = body.encrypted_paste_key {
         updates.push("encrypted_paste_key = ?".to_string());
         values.push(encrypted_paste_key.clone());
-    }
-    if let Some(ref encrypted_preview) = body.encrypted_preview {
-        updates.push("encrypted_preview = ?".to_string());
-        values.push(encrypted_preview.clone());
     }
 
     if updates.is_empty() && body.new_file_slugs.is_none() && body.removed_file_slugs.is_none() {

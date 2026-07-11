@@ -12,7 +12,10 @@ services:
       - pastebin-data:/app/data
     environment:
       - AUTH_KEY=${AUTH_KEY:?Set AUTH_KEY in your environment or .env file to a unique secret passphrase (e.g. run: openssl rand -base64 32)}
-      - MAX_UPLOAD_SIZE=${MAX_UPLOAD_SIZE:-52428800}
+      # Maximum size (bytes) for a text paste's content. Default: 524288 (512 KB).
+      - MAX_TEXT_SIZE=${MAX_TEXT_SIZE:-524288}
+      # Maximum size (bytes) for a single file attachment. Default: 52428800 (50 MB).
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
       - RUST_LOG=info
     restart: unless-stopped
 

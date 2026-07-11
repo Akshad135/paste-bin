@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
+import { useOffline } from '@/lib/offlineContext';
 import { api } from '@/lib/api';
 import { generatePasteKey, encryptText, encryptBytes, wrapPasteKey } from '@/lib/crypto';
 import { LANGUAGES, EXPIRATION_OPTIONS } from '@/lib/constants';
+import { config } from '@/lib/config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +47,8 @@ interface Attachment {
 }
 
 export function NewPaste() {
-    const { isAuthenticated, masterKey } = useAuth();
+    const { isAuthenticated, masterKey, isLoading: authLoading } = useAuth();
+    const { isEffectivelyOffline } = useOffline();
     const navigate = useNavigate();
     
     // Crypto state
@@ -69,6 +72,7 @@ export function NewPaste() {
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    if (authLoading) return null;
     if (!isAuthenticated) {
         navigate('/');
         return null;
@@ -76,6 +80,11 @@ export function NewPaste() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (isEffectivelyOffline) {
+            toast.error('You are offline. Please reconnect to create a paste.');
+            return;
+        }
 
         // Check if any attachments are still uploading
         if (attachments.some(a => a.uploading)) {
@@ -95,13 +104,17 @@ export function NewPaste() {
 
         setLoading(true);
         try {
+            const contentBytes = new Blob([content]).size;
+            if (contentBytes > config.maxTextSize) {
+                toast.error(`Text content is too large (${(contentBytes / 1024).toFixed(1)} KB). Maximum is ${config.maxTextSize / 1024} KB. Please attach large content as a file instead.`);
+                return;
+            }
+
             const validSlugs = attachments.filter(a => !a.error && a.slug).map(a => a.slug as string);
             
             const wrappedKey = await wrapPasteKey(masterKey, pasteKey);
             const encTitle = title.trim() ? await encryptText(pasteKey, title.trim()) : '';
             const encContent = content ? await encryptText(pasteKey, content) : '';
-            const previewText = content.trim().substring(0, 200);
-            const encPreview = previewText ? await encryptText(pasteKey, previewText) : '';
 
             const res = await api.paste.create({
                 title: encTitle,
@@ -111,7 +124,6 @@ export function NewPaste() {
                 expires_in: expiresIn === 'never' ? undefined : expiresIn,
                 file_slugs: validSlugs,
                 encrypted_paste_key: wrappedKey,
-                encrypted_preview: encPreview,
             });
             toast.success('Paste created!');
             navigate(`/paste/${res.slug}`);
@@ -138,6 +150,10 @@ export function NewPaste() {
     };
 
     const processFiles = async (files: FileList) => {
+        if (isEffectivelyOffline) {
+            toast.error('You are offline. File uploads require a connection.');
+            return;
+        }
         if (!pasteKey) {
             toast.error('Encryption key not ready yet');
             return;

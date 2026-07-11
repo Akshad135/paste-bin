@@ -18,7 +18,7 @@ export function Home() {
     const [hasMore, setHasMore] = useState(false);
     const [error, setError] = useState('');
     const { isAuthenticated } = useAuth();
-    const { markStale, clearStale, isOffline, setBackendDown } = useOffline();
+    const { markStale, clearStale, isOffline, isEffectivelyOffline, setBackendDown } = useOffline();
     const navigate = useNavigate();
 
     const hasLoadedOnce = useRef(false);
@@ -210,7 +210,7 @@ export function Home() {
                             <PasteCard
                                 key={paste.id}
                                 paste={paste}
-                                isAuthenticated={isAuthenticated && !isOffline}
+                                isAuthenticated={isAuthenticated && !isEffectivelyOffline}
                                 onPinChange={handlePinChange}
                                 onDelete={handleDelete}
                             />
@@ -221,7 +221,7 @@ export function Home() {
                         <div className="flex justify-center mt-8">
                             <Button
                                 variant="outline"
-                                disabled={loading || isOffline}
+                                disabled={loading || isEffectivelyOffline}
                                 onClick={() => setPage((p) => p + 1)}
                             >
                                 {loading ? (

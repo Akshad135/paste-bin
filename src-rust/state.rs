@@ -18,7 +18,10 @@ pub struct AppState {
     pub auth_key: String,
     pub dist_dir: String,
     pub uploads_dir: String,
-    pub max_upload_size: usize,
+    /// Maximum byte size of a single file attachment.
+    pub max_file_size: usize,
+    /// Maximum byte size of a text paste's `content` field.
+    pub max_text_size: usize,
     pub salt: String,
     pub ws_sender: broadcast::Sender<String>,
     pub login_attempts: Mutex<HashMap<IpAddr, LoginAttempts>>,
@@ -33,7 +36,8 @@ impl AppState {
         auth_key: String,
         dist_dir: String,
         uploads_dir: String,
-        max_upload_size: usize,
+        max_file_size: usize,
+        max_text_size: usize,
         salt: String,
     ) -> Self {
         // Create a broadcast channel with a capacity of 100 messages
@@ -43,7 +47,8 @@ impl AppState {
             auth_key,
             dist_dir,
             uploads_dir,
-            max_upload_size,
+            max_file_size,
+            max_text_size,
             salt,
             ws_sender,
             login_attempts: Mutex::new(HashMap::new()),

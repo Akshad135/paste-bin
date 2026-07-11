@@ -53,9 +53,9 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
     const { masterKey } = useAuth();
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [decryptedTitle, setDecryptedTitle] = useState('');
-    const [decryptedPreview, setDecryptedPreview] = useState('');
+    const [decryptedContent, setDecryptedContent] = useState('');
     const [shareDialogOpen, setShareDialogOpen] = useState(false);
-    const [localSharedKey, setLocalSharedKey] = useState<string | null | undefined>(paste.shared_encrypted_key);
+    const [localSharedKey, setLocalSharedKey] = useState<string | null | undefined>(paste.share_wrapped_paste_key);
 
     useEffect(() => {
         let cancelled = false;
@@ -63,22 +63,22 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
             if (!masterKey || !paste.encrypted_paste_key) {
                 if (!cancelled) {
                     setDecryptedTitle(paste.slug);
-                    setDecryptedPreview('Encrypted content...');
+                    setDecryptedContent('Encrypted content...');
                 }
                 return;
             }
             try {
                 const pasteKey = await unwrapPasteKey(masterKey, paste.encrypted_paste_key);
                 const title = paste.title ? await decryptText(pasteKey, paste.title) : paste.slug;
-                const preview = paste.encrypted_preview ? await decryptText(pasteKey, paste.encrypted_preview) : '';
+                const content = paste.content ? await decryptText(pasteKey, paste.content) : '';
                 if (!cancelled) {
                     setDecryptedTitle(title);
-                    setDecryptedPreview(preview);
+                    setDecryptedContent(content);
                 }
             } catch (e) {
                 if (!cancelled) {
                     setDecryptedTitle(paste.slug);
-                    setDecryptedPreview('Failed to decrypt');
+                    setDecryptedContent('Failed to decrypt');
                 }
             }
         };
@@ -123,14 +123,11 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
 
     const copyContent = async () => {
         try {
-            // decryptedPreview is what the user sees — paste.content and
-            // paste.preview are either empty or still-encrypted on list responses.
-            const text = decryptedPreview;
-            if (!text.trim()) {
+            if (!decryptedContent.trim()) {
                 toast.info('No text content to copy');
                 return;
             }
-            await navigator.clipboard.writeText(text);
+            await navigator.clipboard.writeText(decryptedContent);
             toast.success('Copied to clipboard!');
         } catch {
             toast.error('Failed to copy content');
@@ -144,7 +141,7 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
         toast.success('Link copied!');
     };
 
-    const rawContent = decryptedPreview;
+    const rawContent = decryptedContent.slice(0, 500);
     const hasFiles = paste.file_count !== undefined && paste.file_count > 0;
 
     return (

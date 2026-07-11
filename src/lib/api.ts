@@ -7,6 +7,8 @@ import {
   getCachedPaste,
   cachePastesFromList,
   deleteCachedPaste,
+  cachePasteFiles,
+  getCachedPasteFiles,
 } from "./offlineCache";
 
 import { DEMO_PASTES } from "./demoData";
@@ -21,7 +23,6 @@ export interface Paste {
   content: string;
   language: string;
   pinned: number;
-  preview?: string;
   expires_at: string | null;
   created_at: string;
   updated_at: string;
@@ -31,7 +32,6 @@ export interface Paste {
   file_size: number | null;
   file_count?: number;
   encrypted_paste_key?: string | null;
-  encrypted_preview?: string | null;
   share_wrapped_paste_key?: string | null;
   share_auth_salt?: string | null;
   share_auth_verifier?: string | null;
@@ -323,6 +323,7 @@ export const api = {
             .then((fresh) => {
               if (myFetchId === pasteFetchIds[slug] && fresh?.paste) {
                 cachePaste(slug, fresh.paste).catch(() => {});
+                cachePasteFiles(slug, fresh.files || []).catch(() => {});
                 onUpdate?.({ data: fresh, fromCache: false });
               }
             })
@@ -336,7 +337,8 @@ export const api = {
             });
         }
 
-        return { data: { paste: cached, files: [] }, fromCache: true };
+        const cachedFiles = await getCachedPasteFiles(slug).catch(() => undefined);
+        return { data: { paste: cached, files: cachedFiles || [] }, fromCache: true };
       }
 
       try {
@@ -347,6 +349,7 @@ export const api = {
         if (fresh?.paste) {
           if (myFetchId === pasteFetchIds[slug]) {
             cachePaste(slug, fresh.paste).catch(() => {});
+            cachePasteFiles(slug, fresh.files || []).catch(() => {});
           }
           return { data: fresh, fromCache: false };
         }
@@ -361,8 +364,10 @@ export const api = {
 
         try {
           const fallback = await getCachedPaste(slug);
-          if (fallback)
-            return { data: { paste: fallback, files: [] }, fromCache: true };
+          if (fallback) {
+            const cachedFiles = await getCachedPasteFiles(slug).catch(() => undefined);
+            return { data: { paste: fallback, files: cachedFiles || [] }, fromCache: true };
+          }
         } catch {
           // IDB also failed
         }
@@ -380,7 +385,6 @@ export const api = {
       expires_in?: string;
       file_slugs?: string[];
       encrypted_paste_key?: string;
-      encrypted_preview?: string;
     }) =>
       request<{ success: boolean; slug: string }>("/paste", {
         method: "POST",
@@ -398,7 +402,6 @@ export const api = {
         new_file_slugs?: string[];
         removed_file_slugs?: string[];
         encrypted_paste_key?: string;
-        encrypted_preview?: string;
         share_wrapped_paste_key?: string;
         share_auth_salt?: string;
         share_auth_verifier?: string;

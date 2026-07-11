@@ -56,12 +56,12 @@ pub async fn handle_upload(
             mime_type = field.content_type().map(|s| s.to_string());
             match field.bytes().await {
                 Ok(bytes) => {
-                    if bytes.len() > state.max_upload_size {
+                    if bytes.len() > state.max_file_size {
                         return json_error(
                             StatusCode::PAYLOAD_TOO_LARGE,
                             &format!(
                                 "File too large. Maximum size is {} MB",
-                                state.max_upload_size / 1_048_576
+                                state.max_file_size / 1_048_576
                             ),
                         )
                         .into_response();

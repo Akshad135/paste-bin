@@ -1,11 +1,11 @@
 // IndexedDB-based offline cache for paste data
-// Two stores: 'pasteList' (page → PasteListResponse) and 'pastes' (slug → Paste)
+// Three stores: 'pasteList' (page → PasteListResponse), 'pastes' (slug → Paste), 'pasteFiles' (slug → FileEntry[])
 
-import type { Paste, PasteListResponse } from "./api";
+import type { Paste, PasteListResponse, FileEntry } from "./api";
 import { isSessionActive } from "./keyStore";
 
 const DB_NAME = "pastebin-offline";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -17,6 +17,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains("pastes")) {
         db.createObjectStore("pastes");
+      }
+      if (!db.objectStoreNames.contains("pasteFiles")) {
+        db.createObjectStore("pasteFiles");
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -57,9 +60,10 @@ export function clearOfflineCache(): Promise<void> {
   return openDB().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction(["pasteList", "pastes"], "readwrite");
+        const tx = db.transaction(["pasteList", "pastes", "pasteFiles"], "readwrite");
         tx.objectStore("pasteList").clear();
         tx.objectStore("pastes").clear();
+        tx.objectStore("pasteFiles").clear();
         reqComplete(tx, db, resolve, reject);
       }),
   );
@@ -119,8 +123,10 @@ export function deleteCachedPaste(slug: string): Promise<void> {
   return openDB().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction("pastes", "readwrite");
+        // Delete both the paste record and its cached file list atomically.
+        const tx = db.transaction(["pastes", "pasteFiles"], "readwrite");
         tx.objectStore("pastes").delete(slug);
+        tx.objectStore("pasteFiles").delete(slug);
         reqComplete(tx, db, resolve, reject);
       }),
   );
@@ -150,4 +156,19 @@ export async function cachePastesFromList(pastes: Paste[]): Promise<void> {
   } catch {
     // Silently fail — caching is best-effort
   }
+}
+// --- Paste File Attachments ---
+
+export function cachePasteFiles(slug: string, files: FileEntry[]): Promise<void> {
+  if (!isSessionActive()) return Promise.resolve();
+  return txPut("pasteFiles", slug, { files, cachedAt: Date.now() });
+}
+
+export function getCachedPasteFiles(
+  slug: string,
+): Promise<FileEntry[] | undefined> {
+  return txGet<{ files: FileEntry[]; cachedAt: number }>(
+    "pasteFiles",
+    slug,
+  ).then((result) => result?.files);
 }

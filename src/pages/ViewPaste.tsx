@@ -70,7 +70,7 @@ function isImageMime(mime: string | null): boolean {
 export function ViewPaste() {
     const { slug } = useParams<{ slug: string }>();
     const { isAuthenticated, masterKey } = useAuth();
-    const { isOffline, markStale, clearStale, setBackendDown } = useOffline();
+    const { isOffline, isEffectivelyOffline, markStale, clearStale, setBackendDown } = useOffline();
     const { mode } = useTheme();
     const navigate = useNavigate();
 
@@ -283,7 +283,7 @@ export function ViewPaste() {
         if (!paste) return;
         try {
             await api.paste.revoke(paste.slug);
-            setPaste({ ...paste, shared_encrypted_key: null });
+            setPaste({ ...paste, share_wrapped_paste_key: null });
             toast.success('Share access revoked');
         } catch {
             toast.error('Failed to revoke share');
@@ -376,7 +376,7 @@ export function ViewPaste() {
     };
 
     const togglePin = async () => {
-        if (!paste || isOffline) return;
+        if (!paste || isEffectivelyOffline) return;
         const newPinned = !paste.pinned;
         try {
             await api.paste.pin(paste.slug, newPinned);
@@ -477,7 +477,7 @@ export function ViewPaste() {
     const isShared = !!paste.share_wrapped_paste_key;
 
     const lineCount = paste.content?.trim() ? paste.content.split('\n').length : 0;
-    const canEdit = isAuthenticated && !isOffline;
+    const canEdit = isAuthenticated && !isEffectivelyOffline;
     const isFilePaste = files.length > 0 && !paste.content.trim();
 
     return (
@@ -775,7 +775,7 @@ export function ViewPaste() {
                     onOpenChange={setShareDialogOpen}
                     pasteSlug={paste.slug}
                     encryptedPasteKey={paste.encrypted_paste_key || ''}
-                    onSuccess={(sharedKey) => setPaste({ ...paste, shared_encrypted_key: sharedKey })}
+                    onSuccess={(sharedKey) => setPaste({ ...paste, share_wrapped_paste_key: sharedKey })}
                 />
             )}
         </div>

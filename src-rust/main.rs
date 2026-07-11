@@ -92,10 +92,14 @@ async fn main() {
     let dist_dir = std::env::var("DIST_DIR").unwrap_or_else(|_| "./dist".to_string());
     let uploads_dir =
         std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "./data/uploads".to_string());
-    let max_upload_size: usize = std::env::var("MAX_UPLOAD_SIZE")
+    let max_file_size: usize = std::env::var("MAX_FILE_SIZE")
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(52_428_800); // 50 MB default
+    let max_text_size: usize = std::env::var("MAX_TEXT_SIZE")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(524_288); // 512 KB default
 
     // ── Database ───────────────────────────────────────────────────────
     if let Some(parent) = Path::new(&db_path).parent() {
@@ -114,12 +118,17 @@ async fn main() {
     // ── Uploads directory ──────────────────────────────────────────────
     std::fs::create_dir_all(&uploads_dir).expect("Failed to create uploads directory");
     tracing::info!(
-        "Uploads directory ready at {uploads_dir} (max size: {} MB)",
-        max_upload_size / 1_048_576
+        "Uploads directory ready at {uploads_dir}"
     );
 
     // ── Shared state ───────────────────────────────────────────────────
-    let state = Arc::new(AppState::new(pool, auth_key, dist_dir, uploads_dir, max_upload_size, salt));
+    let state = Arc::new(AppState::new(pool, auth_key, dist_dir, uploads_dir, max_file_size, max_text_size, salt));
+
+    tracing::info!(
+        "Limits: text={} KB, file={} MB",
+        max_text_size / 1_024,
+        max_file_size / 1_048_576
+    );
 
     // ── Background Cleanup Task ────────────────────────────────────────
     let cleanup_state = state.clone();
@@ -167,7 +176,7 @@ async fn main() {
                     format!("{}/index.html", state.dist_dir)
                 ))
         )
-        .layer(RequestBodyLimitLayer::new(state.max_upload_size))
+        .layer(RequestBodyLimitLayer::new(state.max_file_size))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
