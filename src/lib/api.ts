@@ -294,6 +294,7 @@ export const api = {
       onUpdate?: (
         result: CachedResult<{ paste: Paste; files: FileEntry[] }>,
       ) => void,
+      onRemoved?: () => void,
     ): Promise<CachedResult<{ paste: Paste; files: FileEntry[] }>> => {
       // DEMO MODE: Return static data
       if (import.meta.env.VITE_DEMO_MODE === "true") {
@@ -329,10 +330,12 @@ export const api = {
             })
             .catch((err) => {
               // If the server has confirmed this paste is gone
-              // (deleted/expired/revoked), drop the stale cached
-              // copy so it doesn't keep resurfacing.
+              // (deleted/expired/revoked), drop the stale cached copy and
+              // notify the mounted viewer so it clears immediately without
+              // requiring a second manual reload.
               if (isDefinitiveRemoval(err)) {
                 deleteCachedPaste(slug).catch(() => {});
+                onRemoved?.();
               }
             });
         }

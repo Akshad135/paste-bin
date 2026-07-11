@@ -265,7 +265,7 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
                     <DialogHeader>
                         <DialogTitle>Delete Paste</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete <span className="font-semibold text-foreground">{paste.title || paste.slug}</span>? This action cannot be undone.
+                            Are you sure you want to delete <span className="font-semibold text-foreground">{decryptedTitle}</span>? This action cannot be undone.
                             {hasFiles && " This will also delete all attached files."}
                         </DialogDescription>
                     </DialogHeader>

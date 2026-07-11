@@ -145,7 +145,7 @@ async fn main() {
                 "SELECT f.slug FROM files f
                  LEFT JOIN pastes p ON f.paste_slug = p.slug
                  WHERE (p.expires_at IS NOT NULL AND p.expires_at <= datetime('now'))
-                    OR f.paste_slug IS NULL"
+                    OR (f.paste_slug IS NULL AND f.created_at <= datetime('now', '-1 hour'))"
             )
             .fetch_all(&cleanup_state.db)
             .await;

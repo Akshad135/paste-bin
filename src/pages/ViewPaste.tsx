@@ -170,6 +170,16 @@ export function ViewPaste() {
                             console.error('Failed to decrypt fresh paste data', e);
                         }
                     }
+                }, () => {
+                    // Background revalidation confirmed the paste is gone —
+                    // clear the stale content immediately without waiting for
+                    // the user to manually reload.
+                    if (!cancelled) {
+                        setPaste(null);
+                        setFiles([]);
+                        setError('This paste has been deleted or is no longer available.');
+                        setLoading(false);
+                    }
                 });
 
                 if (cancelled) return;
