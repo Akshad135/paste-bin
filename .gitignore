@@ -18,6 +18,13 @@ dist-ssr
 .env
 .env.local
 
+# Runtime data (SQLite DB, E2EE salt, uploaded files) — never commit
+/data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+salt.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

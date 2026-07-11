@@ -1,20 +1,27 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 export type Mode = 'light' | 'dark';
-export type Palette = 'a' | 'b' | 'c' | 'd' | 'e';
+export type Palette = 'catppuccin' | 'terminal' | 'tokyo' | 'dracula' | 'nord' | 'gruvbox' | 'one' | 'solarized' | 'kanagawa' | 'rose-pine' | 'vesper';
 
 export const PALETTE_META: Record<Palette, { name: string; emoji: string }> = {
-    a: { name: 'Catppuccin', emoji: '' },
-    b: { name: 'Dracula', emoji: '' },
-    c: { name: 'Nord', emoji: '' },
-    d: { name: 'Tokyo Night', emoji: '' },
-    e: { name: 'Shadcn', emoji: '' },
+    'catppuccin': { name: 'Catppuccin', emoji: '' },
+    'terminal': { name: 'Terminal', emoji: '' },
+    'tokyo': { name: 'Tokyo Night', emoji: '' },
+    'dracula': { name: 'Dracula', emoji: '' },
+    'nord': { name: 'Nord', emoji: '' },
+    'gruvbox': { name: 'Gruvbox', emoji: '' },
+    'one': { name: 'One Dark', emoji: '' },
+    'solarized': { name: 'Solarized', emoji: '' },
+    'kanagawa': { name: 'Kanagawa', emoji: '' },
+    'rose-pine': { name: 'Rose Pine', emoji: '' },
+    'vesper': { name: 'Vesper', emoji: '' },
 };
 
 interface ThemeContextType {
     mode: Mode;
     palette: Palette;
     toggleMode: () => void;
+    setMode: (m: Mode) => void;
     setPalette: (p: Palette) => void;
 }
 
@@ -29,8 +36,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
     const [palette, setPaletteState] = useState<Palette>(() => {
         const stored = localStorage.getItem('theme-palette');
-        if (stored && ['a', 'b', 'c', 'd', 'e'].includes(stored)) return stored as Palette;
-        return 'a';
+        if (stored && ['catppuccin', 'terminal', 'tokyo', 'dracula', 'nord', 'gruvbox', 'one', 'solarized', 'kanagawa', 'rose-pine', 'vesper'].includes(stored)) return stored as Palette;
+        return 'catppuccin';
     });
 
     useEffect(() => {
@@ -46,7 +53,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const setPalette = (p: Palette) => setPaletteState(p);
 
     return (
-        <ThemeContext.Provider value={{ mode, palette, toggleMode, setPalette }}>
+        <ThemeContext.Provider value={{ mode, palette, toggleMode, setMode, setPalette }}>
             {children}
         </ThemeContext.Provider>
     );

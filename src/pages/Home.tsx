@@ -18,7 +18,7 @@ export function Home() {
     const [hasMore, setHasMore] = useState(false);
     const [error, setError] = useState('');
     const { isAuthenticated } = useAuth();
-    const { markStale, clearStale, isOffline, setBackendDown } = useOffline();
+    const { markStale, clearStale, isOffline, isEffectivelyOffline, setBackendDown } = useOffline();
     const navigate = useNavigate();
 
     const hasLoadedOnce = useRef(false);
@@ -57,6 +57,11 @@ export function Home() {
             }
             setError('');
 
+            if (!isAuthenticated) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 const result = await api.paste.list(page, 20, (freshResult) => {
                     if (cancelled) return;
@@ -78,7 +83,15 @@ export function Home() {
                 if (page === 1) {
                     setPastes(result.data.pastes);
                 } else {
-                    setPastes((prev) => [...prev, ...result.data.pastes]);
+                    // Use the same deduplication logic as the background
+                    // freshResult callback — never blindly append, always
+                    // replace the current page's slice in case a loadTrigger
+                    // fires while page > 1 (SSE, online event, auth change).
+                    setPastes((prev) => {
+                        const existing = new Set(prev.slice(0, (page - 1) * 20).map(p => p.slug));
+                        const newPastes = result.data.pastes.filter(p => !existing.has(p.slug));
+                        return [...prev.slice(0, (page - 1) * 20), ...newPastes];
+                    });
                 }
                 setHasMore(result.data.hasMore);
 
@@ -93,7 +106,7 @@ export function Home() {
                 if (cancelled) return;
                 console.warn('[pastebin] Could not load pastes:', err instanceof Error ? err.message : err);
                 setError(err instanceof Error ? err.message : 'Failed to connect to server');
-                if (navigator.onLine) setBackendDown(true);
+                if (navigator.onLine && (err as Error).name !== 'HttpError') setBackendDown(true);
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -108,11 +121,7 @@ export function Home() {
         setLoadTrigger(t => t + 1);
     }, []);
 
-    const handleVisibilityChange = (slug: string, newVisibility: 'public' | 'private') => {
-        setPastes((prev) =>
-            prev.map((p) => (p.slug === slug ? { ...p, visibility: newVisibility } : p))
-        );
-    };
+
 
     const handleDelete = (slug: string) => {
         setPastes((prev) => prev.filter((p) => p.slug !== slug));
@@ -129,7 +138,7 @@ export function Home() {
     };
 
     return (
-        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 py-4">
+        <div className="mx-auto max-w-[90rem] w-full px-4 sm:px-6 py-4 h-full flex flex-col">
             {loading && pastes.length === 0 ? (
                 <div className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
                     {Array.from({ length: 12 }).map((_, i) => (
@@ -146,8 +155,22 @@ export function Home() {
                         </div>
                     ))}
                 </div>
+            ) : !isAuthenticated ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-center max-w-2xl mx-auto">
+                    <div className="rounded-full bg-primary/10 p-5 mb-6">
+                        <FileCode2 className="h-10 w-10 text-primary" />
+                    </div>
+                    <h2 className="text-2xl font-bold tracking-tight">It's a secret to everybody.</h2>
+                    <div className="text-base text-muted-foreground mt-3 space-y-1.5">
+                        <p>The server has no idea what you're looking for (and prefers it that way).</p>
+                        <p>Log in to access your secure vault, or paste a share link in your address bar!</p>
+                    </div>
+                    <Button className="mt-8 px-8" onClick={() => window.dispatchEvent(new Event('open-login'))}>
+                        Login to Vault
+                    </Button>
+                </div>
             ) : error ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="flex-1 flex flex-col items-center justify-center text-center max-w-2xl mx-auto">
                     <div className="rounded-full bg-destructive/10 p-4 mb-4">
                         <BadgeAlertIcon size={32} className="text-destructive" />
                     </div>
@@ -164,35 +187,30 @@ export function Home() {
                     </Button>
                 </div>
             ) : pastes.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
+                <div className="flex-1 flex flex-col items-center justify-center text-center max-w-2xl mx-auto">
                     <div className="rounded-full bg-primary/10 p-4 mb-4">
                         <FileCode2 className="h-8 w-8 text-primary" />
                     </div>
                     <h2 className="text-lg font-semibold">No pastes yet</h2>
                     <p className="text-sm text-muted-foreground mt-1">
-                        {isAuthenticated
-                            ? 'Create your first paste to get started!'
-                            : 'No public pastes available. Login to create one.'}
+                        Create your first paste to get started!
                     </p>
-                    {isAuthenticated && (
-                        <Button className="mt-4" onClick={() => navigate('/new')}>
+                    <Button className="mt-4" onClick={() => navigate('/new')}>
                             <PlusIcon size={16} className="mr-1.5" />
                             Create a Paste
-                        </Button>
-                    )}
+                    </Button>
                 </div>
             ) : (
                 <>
                     <div
                         className="grid gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
-                        style={{ gridAutoRows: 'calc((100vh - 7rem - 1px) / 3)' }}
+                        style={{ gridAutoRows: 'calc((100dvh - 7rem - 1px) / 3)' }}
                     >
                         {pastes.map((paste) => (
                             <PasteCard
                                 key={paste.id}
                                 paste={paste}
-                                isAuthenticated={isAuthenticated && !isOffline}
-                                onVisibilityChange={handleVisibilityChange}
+                                isAuthenticated={isAuthenticated && !isEffectivelyOffline}
                                 onPinChange={handlePinChange}
                                 onDelete={handleDelete}
                             />
@@ -203,7 +221,7 @@ export function Home() {
                         <div className="flex justify-center mt-8">
                             <Button
                                 variant="outline"
-                                disabled={loading || isOffline}
+                                disabled={loading || isEffectivelyOffline}
                                 onClick={() => setPage((p) => p + 1)}
                             >
                                 {loading ? (

@@ -1,7 +1,7 @@
 # ==============================================================================
 # Stage 1: Build the Vite frontend
 # ==============================================================================
-FROM node:20-alpine AS frontend-builder
+FROM node:22-alpine AS frontend-builder
 WORKDIR /app
 
 # Install dependencies
@@ -55,8 +55,11 @@ ENV PORT=8788
 ENV DATABASE_URL=sqlite://data/pastebin.sqlite
 ENV RUST_LOG=info
 
-# Default AUTH_KEY if not provided via docker-compose (should be overridden)
-ENV AUTH_KEY=default_secure_key
+# AUTH_KEY is intentionally NOT set here. It must be provided explicitly at
+# runtime (e.g. `-e AUTH_KEY=...` or via docker-compose/.env) — the server
+# refuses to start without it, or with a known placeholder value, since it
+# both protects login and derives the E2EE encryption key.
+ENV MAX_UPLOAD_SIZE=52428800
 
 EXPOSE 8788
 

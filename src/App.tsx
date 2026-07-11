@@ -8,6 +8,7 @@ import { Home } from '@/pages/Home';
 import { NewPaste } from '@/pages/NewPaste';
 import { EditPaste } from '@/pages/EditPaste';
 import { ViewPaste } from '@/pages/ViewPaste';
+import { ErrorState } from '@/components/ErrorState';
 import { WifiOff } from 'lucide-react';
 
 function ThemedToaster() {
@@ -58,15 +59,16 @@ function App() {
       <ThemeProvider>
         <OfflineProvider>
           <AuthProvider>
-            <div className="h-screen flex flex-col overflow-hidden">
+            <div className="h-[100dvh] flex flex-col overflow-hidden">
               <Navbar />
               <OfflineBanner />
-              <main className="flex-1 overflow-auto">
+              <main className="flex-1 overflow-auto min-h-0">
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/new" element={<NewPaste />} />
                   <Route path="/paste/:slug" element={<ViewPaste />} />
                   <Route path="/edit/:slug" element={<EditPaste />} />
+                  <Route path="*" element={<ErrorState />} />
                 </Routes>
               </main>
             </div>

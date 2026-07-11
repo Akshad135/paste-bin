@@ -1,13 +1,21 @@
 use axum::http::{HeaderMap, HeaderValue};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
+use sha2::{Digest, Sha256};
 
 const COOKIE_NAME: &str = "pastebin_auth";
 const COOKIE_MAX_AGE: u64 = 60 * 60 * 24 * 30; // 30 days
 
 /// Create the auth token from the secret key.
+///
+/// This is a one-way hash (not a reversible encoding) so the session
+/// cookie never leaks the underlying passphrase, which is also used
+/// to derive the E2EE master key.
 pub fn create_token(key: &str) -> String {
-    BASE64.encode(format!("pastebin:{key}"))
+    let mut hasher = Sha256::new();
+    hasher.update(b"pastebin-session-v1:");
+    hasher.update(key.as_bytes());
+    BASE64.encode(hasher.finalize())
 }
 
 /// Parse cookies from a Cookie header string into key-value pairs.

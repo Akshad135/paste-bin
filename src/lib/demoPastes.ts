@@ -1,4 +1,3 @@
-
 export interface Paste {
   id: number;
   slug: string;
@@ -11,13 +10,15 @@ export interface Paste {
   expires_at: string | null;
   created_at: string;
   updated_at: string;
+  is_file?: number;
+  file_name?: string | null;
+  mime_type?: string | null;
+  file_size?: number | null;
 }
 
 const now = new Date();
 const future = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-
 const formatDate = (d: Date) => d.toISOString().replace('T', ' ').replace('Z', '').split('.')[0];
-
 const NOW = formatDate(now);
 const FUTURE_EXPIRY = formatDate(future);
 
@@ -33,6 +34,10 @@ export const DEMO_PASTES: Paste[] = [
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 1,
+    file_name: "keys_backup.zip",
+    mime_type: "application/zip",
+    file_size: 1024,
     preview: 'sk-ant-api03-Md8...',
     content: `sk-ant-api03-Md8...7d9s-8d7f6g5h4j3k2l1
 sk-ant-api03-Kp2...9a8s-1d2f3g4h5j6k7l8
@@ -52,6 +57,10 @@ sk-ant-api03-Kp2...9a8s-1d2f3g4h5j6k7l8
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '{\n  "host": "production-db.cluster-ro-...",\n  "port": 5432...',
     content: `{
   "host": "production-db.cluster-ro-akshad135.us-east-1.rds.amazonaws.com",
@@ -78,6 +87,10 @@ sk-ant-api03-Kp2...9a8s-1d2f3g4h5j6k7l8
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '# My Dotfiles\n\nAutomated setup key for my development environment...',
     content: `# My Dotfiles
 
@@ -115,6 +128,10 @@ cd dotfiles
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '#include <bits/stdc++.h>\nusing namespace std;\n\ntypedef long long ll;...',
     content: `#include <bits/stdc++.h>
 using namespace std;
@@ -167,6 +184,10 @@ int main() {
     created_at: NOW,
     updated_at: NOW,
     expires_at: FUTURE_EXPIRY,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: 'import Stripe from "stripe";\nimport { buffer } from "micro";...',
     content: `import Stripe from "stripe";
 import { buffer } from "micro";
@@ -232,6 +253,10 @@ export default async function handler(
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: 'import os\nfrom pathlib import Path\n\nBASE_DIR = Path(__file__).resolve().parent.parent...',
     content: `import os
 from pathlib import Path
@@ -281,6 +306,10 @@ WSGI_APPLICATION = "config.wsgi.application"`,
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: 'server {\n    listen 80;\n    server_name api.example.com;\n...',
     content: `server {
     listen 80;
@@ -321,6 +350,10 @@ server {
     created_at: NOW,
     updated_at: NOW,
     expires_at: FUTURE_EXPIRY,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: 'version: "3.8"\n\nservices:\n  app:\n    build: .\n    ports: ...',
     content: `version: "3.8"
 
@@ -370,6 +403,10 @@ volumes:
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: 'error[E0382]: use of moved value: `content`\n  --> src/main.rs:42:20...',
     content: `error[E0382]: use of moved value: \`content\`
   --> src/main.rs:42:20
@@ -404,6 +441,10 @@ error: could not compile \`paste-bin\` due to previous error`,
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: 'type User {\n  id: ID!\n  username: String!\n  email: String!\n...',
     content: `type User {
   id: ID!
@@ -458,6 +499,10 @@ schema {
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\ncontract SimplePaymentChannel...',
     content: `// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
@@ -516,6 +561,10 @@ contract SimplePaymentChannel {
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: 'Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)...',
     content: `Kernel panic - not syncing: VFS: Unable to mount root fs on unknown-block(0,0)
 CPU: 0 PID: 1 Comm: swapper/0 Not tainted 5.15.0-76-generic #83-Ubuntu
@@ -548,6 +597,10 @@ Kernel Offset: 0x36000000 from 0xffffffff81000000 (relocation range: 0xffffffff8
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '/* Do not touch this file unless you want to break IE11 support */\n\n* { box-sizing: border-box; }...',
     content: `/* Do not touch this file unless you want to break IE11 support */
 
@@ -603,6 +656,10 @@ Kernel Offset: 0x36000000 from 0xffffffff81000000 (relocation range: 0xffffffff8
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '; Simple MBR Bootloader\n; BITS 16\n\nstart:\n    mov ax, 07C0h...',
     content: `; Simple MBR Bootloader
 ; BITS 16
@@ -651,6 +708,10 @@ dw 0AA55h               ; The standard PC boot signature`,
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '{\n  "$schema": "https://ui.shadcn.com/schema.json",\n  "style": "new-york",\n...',
     content: `{
   "$schema": "https://ui.shadcn.com/schema.json",
@@ -694,6 +755,10 @@ dw 0AA55h               ; The standard PC boot signature`,
     created_at: NOW,
     updated_at: NOW,
     expires_at: null,
+    is_file: 0,
+    file_name: null,
+    mime_type: null,
+    file_size: null,
     preview: '# Project Roadmap\n\n## High Priority\n- [x] Fix production DB connection leak\n- [ ] Implement dark mode...',
     content: `# Project Roadmap
 

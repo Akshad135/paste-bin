@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/auth';
+import { unwrapPasteKey, decryptText } from '@/lib/crypto';
 import { CodePreview } from '@/components/CodePreview';
 import type { Paste } from '@/lib/api';
 import { api } from '@/lib/api';
@@ -7,6 +9,7 @@ import { getLanguageLabel, timeAgo, isExpired } from '@/lib/constants';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { SharePasteDialog } from '@/components/SharePasteDialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -27,38 +30,63 @@ import { MenuIcon } from '@/components/ui/animated-menu';
 import { CopyIcon } from '@/components/ui/animated-copy';
 import { LinkIcon } from '@/components/ui/animated-link';
 import { SquarePenIcon } from '@/components/ui/animated-square-pen';
-import { EyeIcon } from '@/components/ui/animated-eye';
-import { EyeOffIcon } from '@/components/ui/animated-eye-off';
-import { DeleteIcon } from '@/components/ui/animated-delete';
 
+import { DeleteIcon } from '@/components/ui/animated-delete';
+import { FileTextIcon } from '@/components/ui/animated-file-text';
 import { ClockIcon } from '@/components/ui/animated-clock';
 import { PinIcon } from '@/components/ui/animated-pin';
 import { HourglassIcon } from '@/components/ui/animated-hourglass';
+import { ShareIcon } from '@/components/ui/animated-share';
+import { LockIcon } from '@/components/ui/animated-lock';
 import { ExpirationTimer } from '@/components/ExpirationTimer';
 import { toast } from 'sonner';
 
 interface PasteCardProps {
     paste: Paste;
     isAuthenticated?: boolean;
-    onVisibilityChange?: (slug: string, newVisibility: 'public' | 'private') => void;
     onPinChange?: (slug: string, pinned: boolean) => void;
     onDelete?: (slug: string) => void;
 }
 
-export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, onPinChange, onDelete }: PasteCardProps) {
+export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelete }: PasteCardProps) {
     const navigate = useNavigate();
+    const { masterKey } = useAuth();
     const [deleteOpen, setDeleteOpen] = useState(false);
+    const [decryptedTitle, setDecryptedTitle] = useState('');
+    const [decryptedContent, setDecryptedContent] = useState('');
+    const [shareDialogOpen, setShareDialogOpen] = useState(false);
+    const [localSharedKey, setLocalSharedKey] = useState<string | null | undefined>(paste.share_wrapped_paste_key);
 
-    const toggleVisibility = async () => {
-        const newVisibility = paste.visibility === 'public' ? 'private' : 'public';
-        try {
-            await api.paste.update(paste.slug, { visibility: newVisibility });
-            onVisibilityChange?.(paste.slug, newVisibility);
-            toast.success(`Paste is now ${newVisibility}`);
-        } catch {
-            toast.error('Failed to update visibility');
-        }
-    };
+    useEffect(() => {
+        let cancelled = false;
+        const decrypt = async () => {
+            if (!masterKey || !paste.encrypted_paste_key) {
+                if (!cancelled) {
+                    setDecryptedTitle(paste.slug);
+                    setDecryptedContent('Encrypted content...');
+                }
+                return;
+            }
+            try {
+                const pasteKey = await unwrapPasteKey(masterKey, paste.encrypted_paste_key);
+                const title = paste.title ? await decryptText(pasteKey, paste.title) : paste.slug;
+                const content = paste.content ? await decryptText(pasteKey, paste.content) : '';
+                if (!cancelled) {
+                    setDecryptedTitle(title);
+                    setDecryptedContent(content);
+                }
+            } catch (e) {
+                if (!cancelled) {
+                    setDecryptedTitle(paste.slug);
+                    setDecryptedContent('Failed to decrypt');
+                }
+            }
+        };
+        decrypt();
+        return () => { cancelled = true; };
+    }, [paste, masterKey]);
+
+
 
     const togglePin = async (e?: React.MouseEvent) => {
         e?.stopPropagation();
@@ -83,23 +111,38 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
         }
     };
 
+    const handleRevoke = async () => {
+        try {
+            await api.paste.revoke(paste.slug);
+            setLocalSharedKey(null);
+            toast.success('Share access revoked');
+        } catch {
+            toast.error('Failed to revoke share');
+        }
+    };
+
     const copyContent = async () => {
         try {
-            const text = paste.content || (paste as any).preview || '';
-            await navigator.clipboard.writeText(text);
+            if (!decryptedContent.trim()) {
+                toast.info('No text content to copy');
+                return;
+            }
+            await navigator.clipboard.writeText(decryptedContent);
             toast.success('Copied to clipboard!');
         } catch {
             toast.error('Failed to copy content');
         }
     };
 
-    const shareLink = async () => {
+    const shareLink = async (e?: React.MouseEvent) => {
+        e?.stopPropagation();
         const url = `${window.location.origin}/paste/${paste.slug}`;
         await navigator.clipboard.writeText(url);
         toast.success('Link copied!');
     };
 
-    const rawContent = paste.content || (paste as any).preview || '';
+    const rawContent = decryptedContent.slice(0, 500);
+    const hasFiles = paste.file_count !== undefined && paste.file_count > 0;
 
     return (
         <>
@@ -114,17 +157,22 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                             <PinIcon size={14} className="text-primary shrink-0 rotate-45" />
                         )}
                         <h3 className="font-medium text-sm truncate text-foreground flex-1 min-w-0">
-                            {paste.title || paste.slug}
+                            {decryptedTitle}
                         </h3>
+                        
+                        {hasFiles && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 shrink-0 gap-1 border-primary/20 bg-primary/5 text-primary">
+                                <FileTextIcon size={10} />
+                                {paste.file_count}
+                            </Badge>
+                        )}
+                        
                         <Badge variant="default" className="text-[10px] px-1.5 py-0.5 shrink-0">
                             {getLanguageLabel(paste.language)}
                         </Badge>
-                        <Badge
-                            variant={paste.visibility === 'public' ? 'secondary' : 'outline'}
-                            className="text-[10px] px-1.5 py-0.5 shrink-0"
-                        >
-                            {paste.visibility === 'public' ? 'public' : 'private'}
-                        </Badge>
+                        
+
+                        
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                                 <Button
@@ -145,15 +193,21 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                                 {isAuthenticated && (
                                     <>
                                         <DropdownMenuSeparator />
+                                        
+                                        {localSharedKey ? (
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRevoke(); }} className="text-destructive focus:text-destructive">
+                                                <LockIcon size={14} className="mr-2" /> Revoke access
+                                            </DropdownMenuItem>
+                                        ) : (
+                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShareDialogOpen(true); }}>
+                                                <ShareIcon size={14} className="mr-2" /> Share with PIN
+                                            </DropdownMenuItem>
+                                        )}
+                                        
                                         <DropdownMenuItem onClick={() => navigate(`/edit/${paste.slug}`)}>
                                             <SquarePenIcon size={14} className="mr-2" /> Edit
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={toggleVisibility}>
-                                            {paste.visibility === 'public'
-                                                ? <><EyeOffIcon size={14} className="mr-2" /> Make private</>
-                                                : <><EyeIcon size={14} className="mr-2" /> Make public</>
-                                            }
-                                        </DropdownMenuItem>
+
                                         <DropdownMenuItem onClick={() => togglePin()}>
                                             <PinIcon size={14} className="mr-2" />
                                             {paste.pinned ? 'Unpin' : 'Pin'}
@@ -171,8 +225,17 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                         </DropdownMenu>
                     </div>
 
-                    {/* Code preview */}
-                    <CodePreview code={rawContent} language={paste.language} />
+                    {/* Code preview or file indicator */}
+                    {rawContent.trim() ? (
+                        <CodePreview code={rawContent} language={paste.language} />
+                    ) : hasFiles ? (
+                        <div className="flex-1 flex items-center justify-center rounded-md border border-dashed border-border/40 bg-muted/10 py-6 gap-2 text-muted-foreground">
+                            <FileTextIcon size={16} className="text-primary/60" />
+                            <span className="text-xs font-medium">{paste.file_count} {paste.file_count === 1 ? 'file' : 'files'} attached</span>
+                        </div>
+                    ) : (
+                        <CodePreview code={rawContent} language={paste.language} />
+                    )}
 
                     {/* Footer */}
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-auto">
@@ -202,7 +265,8 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                     <DialogHeader>
                         <DialogTitle>Delete Paste</DialogTitle>
                         <DialogDescription>
-                            Are you sure you want to delete <span className="font-semibold text-foreground">{paste.title || paste.slug}</span>? This action cannot be undone.
+                            Are you sure you want to delete <span className="font-semibold text-foreground">{decryptedTitle}</span>? This action cannot be undone.
+                            {hasFiles && " This will also delete all attached files."}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter className="gap-2 sm:gap-0">
@@ -222,6 +286,15 @@ export function PasteCard({ paste, isAuthenticated = false, onVisibilityChange, 
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Share paste dialog */}
+            <SharePasteDialog
+                open={shareDialogOpen}
+                onOpenChange={setShareDialogOpen}
+                pasteSlug={paste.slug}
+                encryptedPasteKey={paste.encrypted_paste_key || ''}
+                onSuccess={(sharedKey) => setLocalSharedKey(sharedKey)}
+            />
         </>
     );
 }

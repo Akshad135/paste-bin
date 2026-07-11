@@ -2,6 +2,7 @@ use std::{net::SocketAddr, path::Path, sync::Arc};
 
 use axum::Router;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::limit::RequestBodyLimitLayer;
 use tracing_subscriber::{EnvFilter, fmt};
 
 mod auth;
@@ -12,6 +13,61 @@ mod slugs;
 mod state;
 
 use state::AppState;
+
+/// Known placeholder/example values that must never be used as a real
+/// AUTH_KEY. If any of these show up, the server refuses to start rather
+/// than silently running with a guessable passphrase (which also doubles
+/// as the E2EE key-derivation secret).
+const INSECURE_AUTH_KEYS: &[&str] = &[
+    "dev123",
+    "default_secure_key",
+    "change_me_to_a_secure_passphrase",
+];
+
+/// Read AUTH_KEY from the environment, refusing to start if it is missing,
+/// empty, a known placeholder, or too short to be a meaningful secret.
+fn require_auth_key() -> String {
+    let key = match std::env::var("AUTH_KEY") {
+        Ok(k) => k,
+        Err(_) => {
+            eprintln!(
+                "\nFATAL: AUTH_KEY environment variable is not set.\n\n\
+                 This passphrase protects your pastebin login and is also used\n\
+                 to derive your end-to-end encryption key, so it must be set\n\
+                 explicitly to a unique secret — the server will not start\n\
+                 with a guessable built-in default.\n\n\
+                 Set it via `.env`, `docker-compose.yml`, or your platform's\n\
+                 secrets manager, e.g.:\n\
+                 AUTH_KEY=$(openssl rand -base64 32)\n"
+            );
+            std::process::exit(1);
+        }
+    };
+
+    let trimmed = key.trim();
+    if trimmed.is_empty() || INSECURE_AUTH_KEYS.contains(&trimmed) {
+        eprintln!(
+            "\nFATAL: AUTH_KEY is set to a known placeholder/default value.\n\n\
+             Set AUTH_KEY to a unique, secret passphrase before starting the\n\
+             server — refusing to start with a publicly-known default.\n\n\
+             Example:\n\
+             AUTH_KEY=$(openssl rand -base64 32)\n"
+        );
+        std::process::exit(1);
+    }
+
+    if trimmed.len() < 8 {
+        eprintln!(
+            "\nFATAL: AUTH_KEY is too short ({} characters).\n\n\
+             Use a longer, unique passphrase (at least 8 characters, ideally\n\
+             much longer since it also derives your E2EE key).\n",
+            trimmed.len()
+        );
+        std::process::exit(1);
+    }
+
+    key
+}
 
 #[tokio::main]
 async fn main() {
@@ -28,15 +84,22 @@ async fn main() {
     // ── Config from env ────────────────────────────────────────────────
     let db_path =
         std::env::var("DATABASE_PATH").unwrap_or_else(|_| "./data/pastebin.sqlite".to_string());
-    let auth_key = std::env::var("AUTH_KEY").unwrap_or_else(|_| {
-        tracing::warn!("AUTH_KEY not set — using default 'dev123'");
-        "dev123".to_string()
-    });
+    let auth_key = require_auth_key();
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(8788);
     let dist_dir = std::env::var("DIST_DIR").unwrap_or_else(|_| "./dist".to_string());
+    let uploads_dir =
+        std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "./data/uploads".to_string());
+    let max_file_size: usize = std::env::var("MAX_FILE_SIZE")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(52_428_800); // 50 MB default
+    let max_text_size: usize = std::env::var("MAX_TEXT_SIZE")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(524_288); // 512 KB default
 
     // ── Database ───────────────────────────────────────────────────────
     if let Some(parent) = Path::new(&db_path).parent() {
@@ -45,11 +108,81 @@ async fn main() {
 
     let pool = db::init_pool(&db_path).await;
     db::run_migrations(&pool).await;
-
     tracing::info!("Database ready at {db_path}");
 
+    // ── E2EE salt ──────────────────────────────────────────────────────
+    let data_dir = Path::new(&db_path).parent().map(|p| p.to_str().unwrap_or("./data")).unwrap_or("./data");
+    let salt = db::ensure_salt(data_dir);
+    tracing::info!("E2EE salt ready");
+
+    // ── Uploads directory ──────────────────────────────────────────────
+    std::fs::create_dir_all(&uploads_dir).expect("Failed to create uploads directory");
+    tracing::info!(
+        "Uploads directory ready at {uploads_dir}"
+    );
+
     // ── Shared state ───────────────────────────────────────────────────
-    let state = Arc::new(AppState::new(pool, auth_key, dist_dir));
+    let state = Arc::new(AppState::new(pool, auth_key, dist_dir, uploads_dir, max_file_size, max_text_size, salt));
+
+    tracing::info!(
+        "Limits: text={} KB, file={} MB",
+        max_text_size / 1_024,
+        max_file_size / 1_048_576
+    );
+
+    // ── Background Cleanup Task ────────────────────────────────────────
+    let cleanup_state = state.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10)); // 10 seconds
+        loop {
+            interval.tick().await;
+            tracing::info!("Running cleanup task...");
+
+            // Single pass: collect every file slug that belongs to an expired
+            // paste OR was never linked to any paste at all (orphaned upload).
+            // Both cases are equally garbage at this point.
+            let stale_files: Result<Vec<(String,)>, _> = sqlx::query_as(
+                "SELECT f.slug FROM files f
+                 LEFT JOIN pastes p ON f.paste_slug = p.slug
+                 WHERE (p.expires_at IS NOT NULL AND p.expires_at <= datetime('now'))
+                    OR (f.paste_slug IS NULL AND f.created_at <= datetime('now', '-1 hour'))"
+            )
+            .fetch_all(&cleanup_state.db)
+            .await;
+
+            match stale_files {
+                Ok(files) => {
+                    for (slug,) in files {
+                        tracing::info!("Deleting stale file: {}", slug);
+                        let path = std::path::Path::new(&cleanup_state.uploads_dir).join(&slug);
+                        if path.exists() {
+                            if let Err(e) = tokio::fs::remove_file(&path).await {
+                                tracing::warn!("Failed to remove file {} from disk: {e}", slug);
+                            }
+                        }
+                        if let Err(e) = sqlx::query("DELETE FROM files WHERE slug = ?")
+                            .bind(&slug)
+                            .execute(&cleanup_state.db)
+                            .await
+                        {
+                            tracing::error!("Failed to remove file {} from DB: {}", slug, e);
+                        }
+                    }
+                }
+                Err(e) => tracing::error!("Failed to fetch stale files: {}", e),
+            }
+
+            // Now remove the expired paste rows themselves (files are already gone).
+            if let Err(e) = sqlx::query(
+                "DELETE FROM pastes WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')"
+            )
+            .execute(&cleanup_state.db)
+            .await
+            {
+                tracing::error!("Failed to delete expired pastes from DB: {}", e);
+            }
+        }
+    });
 
     // ── Router ─────────────────────────────────────────────────────────
     let app = Router::new()
@@ -60,6 +193,7 @@ async fn main() {
                     format!("{}/index.html", state.dist_dir)
                 ))
         )
+        .layer(RequestBodyLimitLayer::new(state.max_file_size))
         .layer(
             CorsLayer::new()
                 .allow_origin(Any)
@@ -75,5 +209,10 @@ async fn main() {
     let listener = tokio::net::TcpListener::bind(addr)
         .await
         .expect("Failed to bind");
-    axum::serve(listener, app).await.expect("Server error");
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .expect("Server error");
 }
