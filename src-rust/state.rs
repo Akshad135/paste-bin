@@ -22,6 +22,9 @@ pub struct AppState {
     pub salt: String,
     pub ws_sender: broadcast::Sender<String>,
     pub login_attempts: Mutex<HashMap<IpAddr, LoginAttempts>>,
+    /// Rate-limit counters for share-PIN unlock attempts.
+    /// Key: (client IP, paste slug). Value: attempt count + window start.
+    pub unlock_attempts: Mutex<HashMap<(IpAddr, String), LoginAttempts>>,
 }
 
 impl AppState {
@@ -44,6 +47,7 @@ impl AppState {
             salt,
             ws_sender,
             login_attempts: Mutex::new(HashMap::new()),
+            unlock_attempts: Mutex::new(HashMap::new()),
         }
     }
 }

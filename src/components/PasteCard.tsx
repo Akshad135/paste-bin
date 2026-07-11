@@ -123,7 +123,9 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
 
     const copyContent = async () => {
         try {
-            const text = paste.content || (paste as any).preview || '';
+            // decryptedPreview is what the user sees — paste.content and
+            // paste.preview are either empty or still-encrypted on list responses.
+            const text = decryptedPreview;
             if (!text.trim()) {
                 toast.info('No text content to copy');
                 return;

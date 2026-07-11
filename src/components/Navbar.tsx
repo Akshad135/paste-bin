@@ -35,7 +35,6 @@ import { toast } from 'sonner';
 // True when using the bundled ghost icon (not a custom one via env vars)
 const faviconEnv = import.meta.env.VITE_FAVICON_URL;
 const isDefaultIcon = !faviconEnv || faviconEnv === '/favicon.svg';
-const isDemo = import.meta.env.VITE_DEMO_MODE === 'true';
 
 const DARK_THEMES = [
     { key: 'catppuccin', label: 'catppuccin' },
@@ -215,6 +214,17 @@ export function Navbar() {
                                     Logout
                                 </Button>
                             )}
+                            {!isEffectivelyOffline && !isAuthenticated && (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setIsLoginOpen(true)}
+                                    className="text-muted-foreground hover:text-foreground"
+                                >
+                                    <KeyIcon size={16} className="mr-1.5" />
+                                    Login
+                                </Button>
+                            )}
                         </div>
 
                         {/* Mobile: hamburger menu */}
@@ -234,6 +244,11 @@ export function Navbar() {
                                 {!isEffectivelyOffline && isAuthenticated && (
                                     <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                         <LogoutIcon size={16} className="mr-2" /> Logout
+                                    </DropdownMenuItem>
+                                )}
+                                {!isEffectivelyOffline && !isAuthenticated && (
+                                    <DropdownMenuItem onClick={() => setIsLoginOpen(true)}>
+                                        <KeyIcon size={16} className="mr-2" /> Login
                                     </DropdownMenuItem>
                                 )}
                             </DropdownMenuContent>

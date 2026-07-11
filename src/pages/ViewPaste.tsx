@@ -4,7 +4,6 @@ import { codeToHtml } from 'shiki';
 import { api, type Paste, type FileEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { unwrapPasteKey, decryptText, decryptBytes, unwrapPasteKeyFromShare, deriveShareKey } from '@/lib/crypto';
-import { Input } from '@/components/ui/input';
 import {
   InputOTP,
   InputOTPGroup,
@@ -189,8 +188,10 @@ export function ViewPaste() {
                     const dec = await decryptPasteData(rawPaste, rawFiles, pasteKey);
                     setPaste(dec.paste);
                     setFiles(dec.files);
-                } else if (!isAuthenticated && rawPaste.shared_encrypted_key) {
-                    // Guest flow: needs password
+                } else if (!isAuthenticated && (result.data as any).is_shared) {
+                    // Guest flow: paste is shared — show PIN prompt.
+                    // shared_encrypted_key is intentionally absent from the GET response;
+                    // the client must call POST /unlock (rate-limited) to retrieve it.
                     setRawPasteData({ paste: rawPaste, files: rawFiles });
                     setNeedsPassword(true);
                 } else {
@@ -216,7 +217,10 @@ export function ViewPaste() {
 
         load();
         return () => { cancelled = true; };
-    }, [slug, loadTrigger]);
+    // isAuthenticated and masterKey are intentionally included: if the user
+    // logs in via a modal while the page is open (e.g. private paste while
+    // logged out), the load must re-run to decrypt with the newly available key.
+    }, [slug, loadTrigger, isAuthenticated, masterKey]);
 
     useEffect(() => {
         if (!pasteKeyRef.current || files.length === 0) return;
@@ -297,10 +301,25 @@ export function ViewPaste() {
         setGuestUnlocking(true);
         setGuestPasswordError('');
         try {
+            // Step 1: Fetch the encrypted blob from the server (rate-limited).
+            // This is the key change — every PIN attempt costs a server round-trip.
+            let sharedEncryptedKey: string;
+            try {
+                sharedEncryptedKey = await api.paste.unlock(slug);
+            } catch (e: any) {
+                if (e.message === 'TOO_MANY_ATTEMPTS') {
+                    setGuestPasswordError('Too many attempts. Please wait an hour before trying again.');
+                } else {
+                    setGuestPasswordError('Could not reach server. Please try again.');
+                }
+                return;
+            }
+
+            // Step 2: Derive the share key from the PIN and decrypt locally.
             const shareKey = await deriveShareKey(pass, slug);
             let pasteKey;
             try {
-                pasteKey = await unwrapPasteKeyFromShare(shareKey, rawPasteData.paste.shared_encrypted_key!);
+                pasteKey = await unwrapPasteKeyFromShare(shareKey, sharedEncryptedKey);
             } catch (e) {
                 console.error("Failed to unwrap paste key:", e);
                 throw new Error("UNWRAP_FAIL");
@@ -316,7 +335,7 @@ export function ViewPaste() {
                 throw new Error("DECRYPT_FAIL");
             }
         } catch (e: any) {
-            setGuestPasswordError(`Incorrect password. (Debug: ${e.message})`);
+            setGuestPasswordError('Incorrect PIN. Please try again.');
         } finally {
             setGuestUnlocking(false);
         }

@@ -1,8 +1,10 @@
+use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use axum::{
     Json,
-    extract::{Path, Query, State},
+    extract::{ConnectInfo, Path, Query, State},
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
 };
@@ -277,11 +279,28 @@ pub async fn handle_get(
 
     let authenticated = auth::is_authenticated(&headers, &state.auth_key);
 
-    // If not authenticated, only allow access to shared pastes
+    // If not authenticated, only allow access to shared pastes.
+    // Crucially, do NOT return the shared_encrypted_key blob here —
+    // guests must call POST /api/paste/:slug/unlock (rate-limited) to get it.
     if !authenticated {
         if paste.shared_encrypted_key.is_none() {
             return json_error(StatusCode::NOT_FOUND, "Paste not found").into_response();
         }
+
+        // Return a sanitised view: confirm the paste is shared but omit the blob.
+        // The client uses `is_shared: true` to show the PIN prompt.
+        let files = file::get_files_for_paste(&state.db, &slug).await;
+        let mut paste_json = serde_json::to_value(&paste).unwrap();
+        paste_json
+            .as_object_mut()
+            .unwrap()
+            .insert("shared_encrypted_key".to_string(), serde_json::Value::Null);
+        return Json(serde_json::json!({
+            "paste": paste_json,
+            "files": files,
+            "is_shared": true,
+        }))
+        .into_response();
     }
 
     // Get attached files
@@ -290,6 +309,85 @@ pub async fn handle_get(
     Json(serde_json::json!({
         "paste": paste,
         "files": files,
+    }))
+    .into_response()
+}
+
+/// POST /api/paste/:slug/unlock — rate-limited endpoint that returns the
+/// `shared_encrypted_key` blob so guests can decrypt the paste client-side.
+///
+/// Rate limit: 10 attempts per (IP, slug) per hour.
+/// The server never sees or validates the PIN — correctness is checked
+/// client-side via AES-GCM tag authentication (zero-knowledge preserved).
+pub async fn handle_unlock(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+) -> impl IntoResponse {
+    const MAX_ATTEMPTS: u32 = 10;
+    const WINDOW: Duration = Duration::from_secs(3600); // 1 hour
+
+    let ip = addr.ip();
+
+    // --- Rate limit check ---
+    {
+        let mut attempts = state.unlock_attempts.lock().unwrap();
+        let key = (ip, slug.clone());
+        let now = Instant::now();
+
+        let entry = attempts.entry(key).or_insert_with(|| crate::state::LoginAttempts {
+            count: 0,
+            window_start: now,
+        });
+
+        // Reset window if it has expired
+        if now.duration_since(entry.window_start) >= WINDOW {
+            entry.count = 0;
+            entry.window_start = now;
+        }
+
+        if entry.count >= MAX_ATTEMPTS {
+            return json_error(
+                StatusCode::TOO_MANY_REQUESTS,
+                "Too many unlock attempts. Please wait before trying again.",
+            )
+            .into_response();
+        }
+
+        entry.count += 1;
+    }
+
+    // --- Fetch the paste ---
+    let paste: Option<Paste> = sqlx::query_as("SELECT * FROM pastes WHERE slug = ?")
+        .bind(&slug)
+        .fetch_optional(&state.db)
+        .await
+        .unwrap_or(None);
+
+    let Some(paste) = paste else {
+        return json_error(StatusCode::NOT_FOUND, "Paste not found").into_response();
+    };
+
+    // Check expiration
+    if let Some(ref exp) = paste.expires_at {
+        let expired: bool = sqlx::query_scalar("SELECT ? <= datetime('now')")
+            .bind(exp)
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(false);
+
+        if expired {
+            return json_error(StatusCode::GONE, "This paste has expired").into_response();
+        }
+    }
+
+    // Only shared pastes can be unlocked this way
+    let Some(shared_encrypted_key) = paste.shared_encrypted_key else {
+        return json_error(StatusCode::NOT_FOUND, "Paste not found").into_response();
+    };
+
+    Json(serde_json::json!({
+        "shared_encrypted_key": shared_encrypted_key,
     }))
     .into_response()
 }

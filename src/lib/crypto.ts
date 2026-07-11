@@ -59,7 +59,10 @@ export async function deriveMasterKey(
   return crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt,
+      // Cast to ArrayBuffer: Web Crypto's BufferSource does not accept
+      // Uint8Array<ArrayBufferLike> since that union includes SharedArrayBuffer.
+      // base64ToBytes always produces a plain ArrayBuffer-backed Uint8Array.
+      salt: salt.buffer as ArrayBuffer,
       iterations: PBKDF2_ITERATIONS,
       hash: "SHA-256",
     },

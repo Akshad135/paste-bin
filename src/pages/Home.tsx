@@ -83,7 +83,15 @@ export function Home() {
                 if (page === 1) {
                     setPastes(result.data.pastes);
                 } else {
-                    setPastes((prev) => [...prev, ...result.data.pastes]);
+                    // Use the same deduplication logic as the background
+                    // freshResult callback — never blindly append, always
+                    // replace the current page's slice in case a loadTrigger
+                    // fires while page > 1 (SSE, online event, auth change).
+                    setPastes((prev) => {
+                        const existing = new Set(prev.slice(0, (page - 1) * 20).map(p => p.slug));
+                        const newPastes = result.data.pastes.filter(p => !existing.has(p.slug));
+                        return [...prev.slice(0, (page - 1) * 20), ...newPastes];
+                    });
                 }
                 setHasMore(result.data.hasMore);
 

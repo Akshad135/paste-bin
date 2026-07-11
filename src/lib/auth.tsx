@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
 import { api } from "./api";
@@ -32,7 +33,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [masterKey, setMasterKey] = useState<CryptoKey | null>(null);
+  // Keep a ref in sync so checkAuth can read the current key without
+  // needing it as a dependency (avoids stale-closure / re-trigger issues).
+  const masterKeyRef = useRef<CryptoKey | null>(null);
   const { isOffline, setBackendDown } = useOffline();
+
+  // Mirror state into ref on every render.
+  masterKeyRef.current = masterKey;
 
   const checkAuth = useCallback(async () => {
     // Don't hit the network if offline
@@ -49,10 +56,15 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       setIsAuthenticated(authenticated);
       setBackendDown(false); // API responded — backend is up
 
-      // If authenticated, try to restore the master key
+      // If authenticated, try to restore the master key.
+      // Guard: if a key is already held in memory (e.g. we just finished
+      // login() and saveMasterKey hasn't flushed to IndexedDB yet), keep it
+      // rather than overwriting with a potentially-null value from the DB.
       if (authenticated) {
-        const mk = await loadMasterKey();
-        setMasterKey(mk);
+        if (!masterKeyRef.current) {
+          const mk = await loadMasterKey();
+          setMasterKey(mk);
+        }
       } else {
         localStorage.removeItem("e2ee_salt");
         clearSessionActive();
@@ -60,9 +72,13 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         import("./offlineCache").then((m) => m.clearOfflineCache());
       }
     } catch {
-      const mk = await loadMasterKey();
-      setMasterKey(mk);
-      setIsAuthenticated(!!mk);
+      if (!masterKeyRef.current) {
+        const mk = await loadMasterKey();
+        setMasterKey(mk);
+        setIsAuthenticated(!!mk);
+      } else {
+        setIsAuthenticated(true);
+      }
       if (navigator.onLine) {
         setBackendDown(true);
       }
@@ -93,6 +109,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         localStorage.setItem("e2ee_salt", salt);
       } catch (err) {
         console.error("[e2ee] Failed to get salt:", err);
+        // We cannot derive a master key without the salt, so the session
+        // would be unusable. Throw to prevent setIsAuthenticated(true)
+        // from being called with a null key.
+        throw new Error("Login succeeded but encryption key could not be set up. Please try again.");
       }
     } else {
       salt = localStorage.getItem("e2ee_salt") || "";
@@ -101,16 +121,16 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       }
     }
 
-    if (salt) {
-      try {
-        const mk = await deriveMasterKey(passphrase, salt);
-        setMasterKey(mk);
-        await saveMasterKey(mk);
-        markSessionActive();
-      } catch (err) {
-        console.error("[e2ee] Failed to derive master key:", err);
-        if (!navigator.onLine) throw new Error("Invalid offline credentials");
-      }
+    // At this point salt is guaranteed to be non-empty.
+    try {
+      const mk = await deriveMasterKey(passphrase, salt);
+      setMasterKey(mk);
+      await saveMasterKey(mk);
+      markSessionActive();
+    } catch (err) {
+      console.error("[e2ee] Failed to derive master key:", err);
+      if (!navigator.onLine) throw new Error("Invalid offline credentials");
+      throw new Error("Failed to derive encryption key. Please try again.");
     }
 
     setIsAuthenticated(true);

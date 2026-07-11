@@ -427,6 +427,41 @@ export const api = {
         method: "PUT",
         body: JSON.stringify({ shared_encrypted_key: "__revoke__" }),
       }),
+
+    /**
+     * Rate-limited unlock: POST /api/paste/:slug/unlock
+     * Returns the shared_encrypted_key blob if under the attempt limit (10/hr).
+     * Throws an Error with message "TOO_MANY_ATTEMPTS" on HTTP 429.
+     */
+    unlock: async (slug: string): Promise<string> => {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 10000);
+      try {
+        const res = await fetch(`${API_BASE}/paste/${slug}/unlock`, {
+          method: "POST",
+          signal: controller.signal,
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+        });
+        clearTimeout(id);
+        let data: unknown;
+        try {
+          data = await res.json();
+        } catch {
+          throw new Error(`Server error (${res.status})`);
+        }
+        if (res.status === 429) throw new Error("TOO_MANY_ATTEMPTS");
+        if (!res.ok)
+          throw new Error(
+            (data as { error?: string }).error || "Unlock failed",
+          );
+        return (data as { shared_encrypted_key: string }).shared_encrypted_key;
+      } catch (err) {
+        clearTimeout(id);
+        if (err instanceof Error) throw err;
+        throw new Error(String(err));
+      }
+    },
   },
 
   file: {

@@ -30,6 +30,7 @@ pub fn api_router() -> Router<SharedState> {
                 .put(paste::handle_update)
                 .delete(paste::handle_delete),
         )
+        .route("/paste/{slug}/unlock", post(paste::handle_unlock))
         // File endpoints
         .route("/file/upload", post(file::handle_upload))
         .route(

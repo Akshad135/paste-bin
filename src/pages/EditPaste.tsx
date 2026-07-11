@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { api, type Paste } from '@/lib/api';
 import { unwrapPasteKey, decryptText, encryptText, encryptBytes } from '@/lib/crypto';
 import { LANGUAGES, EXPIRATION_OPTIONS } from '@/lib/constants';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -52,7 +52,7 @@ interface Attachment {
 
 export function EditPaste() {
     const { slug } = useParams<{ slug: string }>();
-    const { isAuthenticated, masterKey } = useAuth();
+    const { isAuthenticated, masterKey, isLoading: authLoading } = useAuth();
     const navigate = useNavigate();
 
     const [paste, setPaste] = useState<Paste | null>(null);
@@ -78,13 +78,17 @@ export function EditPaste() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        if (authLoading) return; // Wait until session restore is complete
         if (!isAuthenticated) {
             navigate('/');
             return;
         }
         if (!slug) return;
         loadPaste();
-    }, [slug, isAuthenticated]);
+    // masterKey is included: during session restore isAuthenticated flips to
+    // true before the key is available from IndexedDB. When masterKey
+    // arrives the effect re-runs and retries the load successfully.
+    }, [slug, isAuthenticated, masterKey, authLoading]);
 
     const loadPaste = async () => {
         setLoading(true);
