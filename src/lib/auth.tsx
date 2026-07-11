@@ -14,8 +14,6 @@ import {
   saveMasterKey,
   loadMasterKey,
   clearMasterKey,
-  markSessionActive,
-  clearSessionActive,
 } from "./keyStore";
 
 interface AuthContextType {
@@ -64,16 +62,10 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
         if (!masterKeyRef.current) {
           const mk = await loadMasterKey();
           setMasterKey(mk);
-          // Re-arm the session marker that was cleared when sessionStorage was
-          // wiped on browser restart. Without this, offline cache writes remain
-          // gated and silently skip after every page reload.
-          if (mk) markSessionActive();
         }
       } else {
         localStorage.removeItem("e2ee_salt");
-        clearSessionActive();
         clearMasterKey().catch(() => {});
-        import("./offlineCache").then((m) => m.clearOfflineCache());
       }
     } catch {
       if (!masterKeyRef.current) {
@@ -130,7 +122,7 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
       const mk = await deriveMasterKey(passphrase, salt);
       setMasterKey(mk);
       await saveMasterKey(mk);
-      markSessionActive();
+
     } catch (err) {
       console.error("[e2ee] Failed to derive master key:", err);
       if (!navigator.onLine) throw new Error("Invalid offline credentials");
@@ -146,10 +138,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     if (!navigator.onLine) {
       setIsAuthenticated(false);
       setMasterKey(null);
-      clearSessionActive();
       clearMasterKey().catch(() => {});
       localStorage.removeItem("e2ee_salt");
-      import("./offlineCache").then((m) => m.clearOfflineCache());
       return;
     }
     try {
@@ -159,10 +149,8 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
     }
     setIsAuthenticated(false);
     setMasterKey(null);
-    clearSessionActive();
     clearMasterKey().catch(() => {});
     localStorage.removeItem("e2ee_salt");
-    import("./offlineCache").then((m) => m.clearOfflineCache());
   };
 
   return (

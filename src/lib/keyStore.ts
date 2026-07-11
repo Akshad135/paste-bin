@@ -87,23 +87,3 @@ export async function clearMasterKey(): Promise<void> {
   }
 }
 
-// ─── Non-secret "is a master key currently loaded" marker ──────────────────
-//
-// Other modules (e.g. the offline cache) need a fast, synchronous way to
-// check "is E2EE currently unlocked?" without awaiting an IndexedDB round
-// trip on every cache write. This marker holds no key material — it's just
-// a boolean witness — so storing it in sessionStorage is fine.
-
-const SESSION_ACTIVE_MARKER = "e2ee_active";
-
-export function markSessionActive(): void {
-  sessionStorage.setItem(SESSION_ACTIVE_MARKER, "1");
-}
-
-export function clearSessionActive(): void {
-  sessionStorage.removeItem(SESSION_ACTIVE_MARKER);
-}
-
-export function isSessionActive(): boolean {
-  return sessionStorage.getItem(SESSION_ACTIVE_MARKER) === "1";
-}

@@ -349,12 +349,6 @@ export function NewPaste() {
                             {/* Left group */}
                             <div className="flex items-center justify-center md:justify-start gap-4 md:gap-6 w-full md:w-auto order-1 md:order-none">
                                 <div className="flex items-center gap-2">
-                                    <Switch
-                                        checked={isPinned}
-                                        onCheckedChange={setIsPinned}
-                                        id="pin-toggle"
-                                        className="scale-90 md:scale-75 md:origin-left"
-                                    />
                                     <Label
                                         htmlFor="pin-toggle"
                                         className={cn(
@@ -365,6 +359,12 @@ export function NewPaste() {
                                         <PinIcon size={14} className={cn("transition-transform", isPinned && "rotate-45")} />
                                         <span className="inline">Pinned</span>
                                     </Label>
+                                    <Switch
+                                        checked={isPinned}
+                                        onCheckedChange={setIsPinned}
+                                        id="pin-toggle"
+                                        className="scale-90 md:scale-75 md:origin-right"
+                                    />
                                 </div>
                                 <div className="h-3 w-px bg-border/60 hidden md:block" />
                                 <div className="flex items-center gap-2 md:gap-3">

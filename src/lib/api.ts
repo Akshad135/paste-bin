@@ -1,19 +1,6 @@
 // API client for pastebin backend
 
-import {
-  cachePasteList,
-  getCachedPasteList,
-  cachePaste,
-  getCachedPaste,
-  cachePastesFromList,
-  deleteCachedPaste,
-  cachePasteFiles,
-  getCachedPasteFiles,
-} from "./offlineCache";
-
-
 const API_BASE = "/api";
-const NETWORK_TIMEOUT_MS = 4000;
 
 export interface Paste {
   id: number;
@@ -54,33 +41,6 @@ export interface PasteListResponse {
   hasMore: boolean;
 }
 
-/** Result wrapper — lets the UI know if data came from cache */
-export interface CachedResult<T> {
-  data: T;
-  fromCache: boolean;
-}
-
-/**
- * Thrown when the server gave a definitive HTTP error response (as opposed
- * to a network failure/timeout). Carries the status code so callers can
- * distinguish "server said no" (401/403/404/410 — paste deleted, expired,
- * or access revoked) from "we couldn't reach the server" (which is the only
- * case that should fall back to the offline cache).
- */
-class HttpError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "HttpError";
-    this.status = status;
-  }
-}
-
-/** Status codes that mean "this resource is definitively not available to us" */
-function isDefinitiveRemoval(err: unknown): boolean {
-  return err instanceof HttpError && [401, 403, 404, 410].includes(err.status);
-}
-
 // ─── Core fetch helper (unchanged for write operations) ───
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -118,59 +78,6 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 }
 
-// ─── Network-first fetch with fast timeout for reads ───
-
-/**
- * Race the network against a timer.
- * - If the network wins → return fresh data.
- * - If the timer wins → let the caller fall back to cache.
- * Uses a SEPARATE shorter timeout (NETWORK_TIMEOUT_MS) so we fail-fast to cache.
- *
- * Throws `HttpError` for definitive server responses (so callers can tell
- * "paste not found/expired/revoked" apart from "network is unreachable"),
- * and a plain `Error` for network-level failures (timeout, abort, malformed
- * response body).
- */
-function fetchWithTimeout<T>(path: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      controller.abort();
-      reject(new Error("Network timeout"));
-    }, NETWORK_TIMEOUT_MS);
-
-    fetch(`${API_BASE}${path}`, {
-      signal: controller.signal,
-      credentials: "include",
-      cache: "no-store",
-      headers: { "Content-Type": "application/json" },
-    })
-      .then(async (res) => {
-        clearTimeout(timer);
-        let data: unknown;
-        try {
-          data = await res.json();
-        } catch {
-          throw new Error(`Server error (${res.status})`);
-        }
-        if (!res.ok)
-          throw new HttpError(
-            res.status,
-            (data as { error?: string }).error || "Request failed",
-          );
-        resolve(data as T);
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-  });
-}
-
-// ─── Monotonic fetch IDs to prevent stale-overwrites-fresh race condition ───
-let listFetchId = 0;
-let pasteFetchIds: Record<string, number> = {};
-
 export const api = {
   auth: {
     login: (passphrase: string) =>
@@ -190,164 +97,12 @@ export const api = {
   },
 
   paste: {
-    /**
-     * List pastes — stale-while-revalidate pattern.
-     * Returns cached data instantly if available, then refreshes in the background.
-     * The caller provides an `onUpdate` callback for background refresh results.
-     */
-    list: async (
-      page = 1,
-      limit = 20,
-      onUpdate?: (result: CachedResult<PasteListResponse>) => void,
-    ): Promise<CachedResult<PasteListResponse>> => {
-      const myFetchId = ++listFetchId;
-
-      // Try to get cached data (best-effort, don't let IDB errors break the flow)
-      let cached: PasteListResponse | undefined;
-      try {
-        cached = (await getCachedPasteList(page)) ?? undefined;
-      } catch {
-        cached = undefined;
-      }
-
-      if (cached && cached.pastes) {
-        // We have cached data — show it immediately
-        // Then try to refresh in background (if online)
-        if (navigator.onLine) {
-          fetchWithTimeout<PasteListResponse>(
-            `/paste?page=${page}&limit=${limit}`,
-          )
-            .then((fresh) => {
-              if (myFetchId === listFetchId && fresh && fresh.pastes) {
-                cachePasteList(page, fresh).catch(() => {});
-                cachePastesFromList(fresh.pastes).catch(() => {});
-                onUpdate?.({ data: fresh, fromCache: false });
-              }
-            })
-            .catch(() => {});
-        }
-
-        return { data: cached, fromCache: true };
-      }
-
-      // No cache — must wait for network
-      try {
-        const fresh = await fetchWithTimeout<PasteListResponse>(
-          `/paste?page=${page}&limit=${limit}`,
-        );
-        if (fresh && fresh.pastes) {
-          if (myFetchId === listFetchId) {
-            cachePasteList(page, fresh).catch(() => {});
-            cachePastesFromList(fresh.pastes).catch(() => {});
-          }
-          return { data: fresh, fromCache: false };
-        }
-        throw new Error("Invalid response from server");
-      } catch (err) {
-        // A definitive server response (e.g. 401 Unauthorized) is not a
-        // reason to show stale cached data — only fall back to cache for
-        // actual network failures (timeouts, unreachable server, etc).
-        if (isDefinitiveRemoval(err)) {
-          throw err;
-        }
-
-        // Network failed — try IndexedDB one more time
-        try {
-          const fallback = await getCachedPasteList(page);
-          if (fallback && fallback.pastes)
-            return { data: fallback, fromCache: true };
-        } catch {
-          // IDB also failed
-        }
-        throw err instanceof Error
-          ? err
-          : new Error("Failed to connect to server");
-      }
+    list: async (page = 1, limit = 20): Promise<PasteListResponse> => {
+      return request<PasteListResponse>(`/paste?page=${page}&limit=${limit}`);
     },
 
-    /**
-     * Get a single paste — same stale-while-revalidate pattern.
-     */
-    get: async (
-      slug: string,
-      onUpdate?: (
-        result: CachedResult<{ paste: Paste; files: FileEntry[] }>,
-      ) => void,
-      onRemoved?: () => void,
-    ): Promise<CachedResult<{ paste: Paste; files: FileEntry[] }>> => {
-      const myFetchId = (pasteFetchIds[slug] = (pasteFetchIds[slug] || 0) + 1);
-
-      let cached: Paste | undefined;
-      try {
-        const raw = (await getCachedPaste(slug)) ?? undefined;
-        // Only use cache if it has full content (not just preview from list)
-        cached = raw?.content ? raw : undefined;
-      } catch {
-        cached = undefined;
-      }
-
-      if (cached) {
-        if (navigator.onLine) {
-          fetchWithTimeout<{ paste: Paste; files: FileEntry[] }>(
-            `/paste/${slug}`,
-          )
-            .then((fresh) => {
-              if (myFetchId === pasteFetchIds[slug] && fresh?.paste) {
-                cachePaste(slug, fresh.paste).catch(() => {});
-                cachePasteFiles(slug, fresh.files || []).catch(() => {});
-                onUpdate?.({ data: fresh, fromCache: false });
-              }
-            })
-            .catch((err) => {
-              // If the server has confirmed this paste is gone
-              // (deleted/expired/revoked), drop the stale cached copy and
-              // notify the mounted viewer so it clears immediately without
-              // requiring a second manual reload.
-              if (isDefinitiveRemoval(err)) {
-                deleteCachedPaste(slug).catch(() => {});
-                onRemoved?.();
-              }
-            });
-        }
-
-        const cachedFiles = await getCachedPasteFiles(slug).catch(() => undefined);
-        return { data: { paste: cached, files: cachedFiles || [] }, fromCache: true };
-      }
-
-      try {
-        const fresh = await fetchWithTimeout<{
-          paste: Paste;
-          files: FileEntry[];
-        }>(`/paste/${slug}`);
-        if (fresh?.paste) {
-          if (myFetchId === pasteFetchIds[slug]) {
-            cachePaste(slug, fresh.paste).catch(() => {});
-            cachePasteFiles(slug, fresh.files || []).catch(() => {});
-          }
-          return { data: fresh, fromCache: false };
-        }
-        throw new Error("Paste not found");
-      } catch (e) {
-        // A definitive server response (paste deleted/expired/access
-        // revoked) must not be masked by a stale cached copy.
-        if (isDefinitiveRemoval(e)) {
-          deleteCachedPaste(slug).catch(() => {});
-          throw e;
-        }
-
-        try {
-          const fallback = await getCachedPaste(slug);
-          if (fallback) {
-            const cachedFiles = await getCachedPasteFiles(slug).catch(() => undefined);
-            return { data: { paste: fallback, files: cachedFiles || [] }, fromCache: true };
-          }
-        } catch {
-          // IDB also failed
-        }
-        throw e instanceof Error
-          ? e
-          : new Error("Paste not found or server unavailable");
-      }
+    get: async (slug: string): Promise<{ paste: Paste; files: FileEntry[] }> => {
+      return request<{ paste: Paste; files: FileEntry[] }>(`/paste/${slug}`);
     },
 
     create: (data: {

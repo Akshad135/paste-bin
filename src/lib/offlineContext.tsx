@@ -7,12 +7,6 @@ interface OfflineContextType {
     backendDown: boolean;
     /** True when either the browser is offline OR the backend is unreachable */
     isEffectivelyOffline: boolean;
-    /** Currently showing data from cache instead of fresh server data */
-    isStaleData: boolean;
-    /** Mark that we're showing stale/cached data */
-    markStale: () => void;
-    /** Clear the stale flag (e.g., after a successful fresh fetch) */
-    clearStale: () => void;
     /** Mark backend as down (called by api/auth on network errors while online) */
     setBackendDown: (down: boolean) => void;
 }
@@ -22,7 +16,6 @@ const OfflineContext = createContext<OfflineContextType | null>(null);
 export function OfflineProvider({ children }: { children: ReactNode }) {
     const [isOffline, setIsOffline] = useState(!navigator.onLine);
     const [backendDown, setBackendDownState] = useState(false);
-    const [isStaleData, setIsStaleData] = useState(false);
 
     useEffect(() => {
         const goOnline = () => setIsOffline(false);
@@ -35,13 +28,6 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
         };
     }, []);
 
-    // When coming back online, clear stale flag (fresh fetches will happen)
-    useEffect(() => {
-        if (!isOffline) setIsStaleData(false);
-    }, [isOffline]);
-
-    const markStale = useCallback(() => setIsStaleData(true), []);
-    const clearStale = useCallback(() => setIsStaleData(false), []);
     const setBackendDown = useCallback((down: boolean) => setBackendDownState(down), []);
 
     const isEffectivelyOffline = isOffline || backendDown;
@@ -51,9 +37,6 @@ export function OfflineProvider({ children }: { children: ReactNode }) {
             isOffline,
             backendDown,
             isEffectivelyOffline,
-            isStaleData,
-            markStale,
-            clearStale,
             setBackendDown,
         }}>
             {children}

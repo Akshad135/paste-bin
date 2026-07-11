@@ -71,7 +71,7 @@ function isImageMime(mime: string | null): boolean {
 export function ViewPaste() {
     const { slug } = useParams<{ slug: string }>();
     const { isAuthenticated, masterKey } = useAuth();
-    const { isEffectivelyOffline, markStale, clearStale, setBackendDown } = useOffline();
+    const { isEffectivelyOffline, setBackendDown } = useOffline();
     const { mode } = useTheme();
     const navigate = useNavigate();
 
@@ -157,36 +157,12 @@ export function ViewPaste() {
             }
             setError('');
             try {
-                const result = await api.paste.get(slug, async (freshResult) => {
-                    if (cancelled) return;
-                    // Background refresh for authenticated users
-                    if (isAuthenticated && masterKey && freshResult.data.paste.encrypted_paste_key) {
-                        try {
-                            const pasteKey = await unwrapPasteKey(masterKey, freshResult.data.paste.encrypted_paste_key);
-                            const dec = await decryptPasteData(freshResult.data.paste, freshResult.data.files || [], pasteKey);
-                            setPaste(dec.paste);
-                            setFiles(dec.files);
-                            clearStale();
-                        } catch (e) {
-                            console.error('Failed to decrypt fresh paste data', e);
-                        }
-                    }
-                }, () => {
-                    // Background revalidation confirmed the paste is gone —
-                    // clear the stale content immediately without waiting for
-                    // the user to manually reload.
-                    if (!cancelled) {
-                        setPaste(null);
-                        setFiles([]);
-                        setError('This paste has been deleted or is no longer available.');
-                        setLoading(false);
-                    }
-                });
+                const result = await api.paste.get(slug);
 
                 if (cancelled) return;
 
-                const rawPaste = result.data.paste;
-                const rawFiles = result.data.files || [];
+                const rawPaste = result.paste;
+                const rawFiles = result.files || [];
 
                 if (isAuthenticated && masterKey && rawPaste.encrypted_paste_key) {
                     // Owner flow: unwrap with master key
@@ -194,7 +170,7 @@ export function ViewPaste() {
                     const dec = await decryptPasteData(rawPaste, rawFiles, pasteKey);
                     setPaste(dec.paste);
                     setFiles(dec.files);
-                } else if (!isAuthenticated && (result.data as any).is_shared) {
+                } else if (!isAuthenticated && (result as any).is_shared) {
                     // Guest flow: paste is shared — show PIN prompt.
                     // shared_encrypted_key is intentionally absent from the GET response;
                     // the client must call POST /unlock (rate-limited) to retrieve it.
@@ -204,12 +180,7 @@ export function ViewPaste() {
                     throw new Error('Cannot decrypt paste');
                 }
 
-                if (result.fromCache) {
-                    markStale();
-                } else {
-                    clearStale();
-                    setBackendDown(false);
-                }
+                setBackendDown(false);
                 hasLoadedOnce.current = true;
             } catch (err) {
                 if (cancelled) return;

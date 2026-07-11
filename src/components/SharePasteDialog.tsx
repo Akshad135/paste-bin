@@ -101,10 +101,7 @@ export function SharePasteDialog({
 
             onSuccess(shareWrappedPasteKey);
 
-            // Copy link to clipboard
-            const url = `${window.location.origin}/paste/${pasteSlug}`;
-            await navigator.clipboard.writeText(url);
-            toast.success('Paste shared! Link copied to clipboard.');
+            toast.success('Paste shared!');
 
             onOpenChange(false);
         } catch (e) {
@@ -117,36 +114,35 @@ export function SharePasteDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+            <DialogContent className="sm:max-w-md p-4 sm:p-6" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                 <DialogHeader>
                     <DialogTitle>Share Paste</DialogTitle>
                     <DialogDescription>
                         An access code has been generated. Share the link and this code
-                        with your recipient. Without the correct code the server will not
-                        release the paste.
+                        with your recipient.
                     </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-5 mt-2">
                     {/* Access code display */}
-                    <div className="rounded-lg border bg-muted/50 p-4">
+                    <div className="rounded-lg border bg-muted/50 p-2 min-[330px]:p-3 min-[380px]:p-4">
                         <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">
                             Access Code
                         </p>
                         <div className="flex flex-col items-center gap-4 py-2">
                             <InputOTP maxLength={8} value={accessCode} readOnly>
                                 <InputOTPGroup>
-                                    <InputOTPSlot index={0} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
-                                    <InputOTPSlot index={1} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
-                                    <InputOTPSlot index={2} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
-                                    <InputOTPSlot index={3} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={0} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
+                                    <InputOTPSlot index={1} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
+                                    <InputOTPSlot index={2} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
+                                    <InputOTPSlot index={3} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
                                 </InputOTPGroup>
                                 <InputOTPSeparator />
                                 <InputOTPGroup>
-                                    <InputOTPSlot index={4} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
-                                    <InputOTPSlot index={5} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
-                                    <InputOTPSlot index={6} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
-                                    <InputOTPSlot index={7} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={4} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
+                                    <InputOTPSlot index={5} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
+                                    <InputOTPSlot index={6} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
+                                    <InputOTPSlot index={7} className="font-mono text-sm min-[330px]:text-base min-[380px]:text-lg h-7 w-5 min-[330px]:h-9 min-[330px]:w-7 min-[380px]:h-10 min-[380px]:w-8 sm:h-12 sm:w-10" />
                                 </InputOTPGroup>
                             </InputOTP>
                             <Button
@@ -157,20 +153,19 @@ export function SharePasteDialog({
                                 {copied ? 'Copied to clipboard!' : 'Copy Code'}
                             </Button>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-2">
-                            8-character alphanumeric · auto-generated · share privately
-                        </p>
+
                     </div>
 
-                    <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => onOpenChange(false)} disabled={shareLoading}>
+                    <div className="flex flex-col-reverse min-[350px]:flex-row justify-center gap-2 mt-4 sm:mt-0 w-full">
+                        <Button variant="outline" className="w-full min-[350px]:w-auto" onClick={() => onOpenChange(false)} disabled={shareLoading}>
                             Cancel
                         </Button>
                         <Button
+                            className="w-full min-[350px]:w-auto"
                             disabled={shareLoading}
                             onClick={handleShare}
                         >
-                            {shareLoading ? 'Sharing...' : 'Share & Copy Link'}
+                            {shareLoading ? 'Sharing...' : 'Share Paste'}
                         </Button>
                     </div>
                 </div>

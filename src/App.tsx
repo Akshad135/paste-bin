@@ -32,9 +32,9 @@ function ThemedToaster() {
 }
 
 function OfflineBanner() {
-  const { isOffline, isStaleData } = useOffline();
+  const { isOffline } = useOffline();
 
-  if (!isOffline && !isStaleData) return null;
+  if (!isOffline) return null;
 
   return (
     <div className="shrink-0 flex items-center justify-center gap-2 px-4 py-1.5 text-xs font-medium border-b border-border/60"
@@ -44,11 +44,7 @@ function OfflineBanner() {
       }}
     >
       <WifiOff size={14} />
-      <span>
-        {isOffline
-          ? "You're offline — viewing cached content. Some actions are unavailable."
-          : "Showing cached content while refreshing…"}
-      </span>
+      <span>You're offline. Some actions are unavailable.</span>
     </div>
   );
 }

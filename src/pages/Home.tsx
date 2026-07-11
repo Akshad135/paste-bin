@@ -18,7 +18,7 @@ export function Home() {
     const [hasMore, setHasMore] = useState(false);
     const [error, setError] = useState('');
     const { isAuthenticated } = useAuth();
-    const { markStale, clearStale, isOffline, isEffectivelyOffline, setBackendDown } = useOffline();
+    const { isOffline, isEffectivelyOffline, setBackendDown } = useOffline();
     const navigate = useNavigate();
 
     const hasLoadedOnce = useRef(false);
@@ -63,44 +63,22 @@ export function Home() {
             }
 
             try {
-                const result = await api.paste.list(page, 20, (freshResult) => {
-                    if (cancelled) return;
-                    if (page === 1) {
-                        setPastes(freshResult.data.pastes);
-                    } else {
-                        setPastes((prev) => {
-                            const existing = new Set(prev.slice(0, (page - 1) * 20).map(p => p.slug));
-                            const newPastes = freshResult.data.pastes.filter(p => !existing.has(p.slug));
-                            return [...prev.slice(0, (page - 1) * 20), ...newPastes];
-                        });
-                    }
-                    setHasMore(freshResult.data.hasMore);
-                    clearStale();
-                });
+                const result = await api.paste.list(page, 20);
 
                 if (cancelled) return;
 
                 if (page === 1) {
-                    setPastes(result.data.pastes);
+                    setPastes(result.pastes);
                 } else {
-                    // Use the same deduplication logic as the background
-                    // freshResult callback — never blindly append, always
-                    // replace the current page's slice in case a loadTrigger
-                    // fires while page > 1 (SSE, online event, auth change).
                     setPastes((prev) => {
                         const existing = new Set(prev.slice(0, (page - 1) * 20).map(p => p.slug));
-                        const newPastes = result.data.pastes.filter(p => !existing.has(p.slug));
+                        const newPastes = result.pastes.filter(p => !existing.has(p.slug));
                         return [...prev.slice(0, (page - 1) * 20), ...newPastes];
                     });
                 }
-                setHasMore(result.data.hasMore);
+                setHasMore(result.hasMore);
 
-                if (result.fromCache) {
-                    markStale();
-                } else {
-                    clearStale();
-                    setBackendDown(false);
-                }
+                setBackendDown(false);
                 hasLoadedOnce.current = true;
             } catch (err) {
                 if (cancelled) return;
@@ -114,7 +92,7 @@ export function Home() {
 
         load();
         return () => { cancelled = true; };
-    }, [page, loadTrigger, markStale, clearStale]);
+    }, [page, loadTrigger]);
 
     const handleRetry = useCallback(() => {
         hasLoadedOnce.current = false;
@@ -177,7 +155,7 @@ export function Home() {
                     <h2 className="text-lg font-semibold">Connection Error</h2>
                     <p className="text-sm text-muted-foreground mt-1 max-w-sm">
                         {isOffline
-                            ? 'You are offline and no cached data is available. Connect to the internet and try again.'
+                            ? 'You are offline. Connect to the internet and try again.'
                             : `${error}. Make sure the API server is running.`
                         }
                     </p>

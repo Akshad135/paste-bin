@@ -103,7 +103,7 @@ export function EditPaste() {
         setRemovedSlugs([]);
         try {
             const result = await api.paste.get(slug!);
-            const p = result.data.paste;
+            const p = result.paste;
             setPaste(p);
             
             let key: CryptoKey | null = null;
@@ -123,7 +123,7 @@ export function EditPaste() {
             setIsPinned(p.pinned === 1);
             setExpiresIn(p.expires_at ? '__current__' : 'never');
             
-            const existingFiles = result.data.files;
+            const existingFiles = result.files;
             if (existingFiles && existingFiles.length > 0) {
                 const decAttachments = await Promise.all(existingFiles.map(async f => ({
                     slug: f.slug,
@@ -461,11 +461,6 @@ export function EditPaste() {
                             {/* Left group */}
                             <div className="flex items-center justify-center md:justify-start gap-4 md:gap-6 w-full md:w-auto order-1 md:order-none">
                                 <div className="flex items-center gap-2">
-                                    <Switch
-                                        checked={isPinned}
-                                        onCheckedChange={setIsPinned}
-                                        id="pin-toggle"
-                                    />
                                     <Label
                                         htmlFor="pin-toggle"
                                         className={cn(
@@ -476,6 +471,11 @@ export function EditPaste() {
                                         <PinIcon size={14} className={cn("transition-transform", isPinned && "rotate-45")} />
                                         <span className="inline">Pinned</span>
                                     </Label>
+                                    <Switch
+                                        checked={isPinned}
+                                        onCheckedChange={setIsPinned}
+                                        id="pin-toggle"
+                                    />
                                 </div>
                                 <div className="h-3 w-px bg-border/60 hidden md:block" />
                                 <div className="flex items-center gap-2 md:gap-3">
