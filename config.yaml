@@ -1,10 +1,10 @@
 # ─── Branding ───────────────────────────────────────────
-# Edit these values to customize your pastebin instance.
+# Edit these values to customize your ghostbin instance.
 # These are injected at build time via Vite.
 
-app_name: pastebin
+app_name: ghostbin
 app_name_accent: bin
-app_description: A simple, private-first pastebin with syntax highlighting
+app_description: A simple, private-first ghostbin with syntax highlighting
 
 # ─── Icons ──────────────────────────────────────────────
 # Defaults use the bundled ghost icon. Drop your own files

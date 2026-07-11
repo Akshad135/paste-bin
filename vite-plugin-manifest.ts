@@ -8,8 +8,8 @@ export function manifestPlugin(): Plugin {
     return {
         name: 'generate-manifest',
         generateBundle() {
-            const name = process.env.VITE_APP_NAME || 'pastebin';
-            const description = process.env.VITE_APP_DESCRIPTION || 'A simple, private-first pastebin with syntax highlighting';
+            const name = process.env.VITE_APP_NAME || 'ghostbin';
+            const description = process.env.VITE_APP_DESCRIPTION || 'A simple, private-first ghostbin with syntax highlighting';
             const themeColor = process.env.VITE_THEME_COLOR || '#4338ca';
             const bgColor = process.env.VITE_BG_COLOR || '#0a0a0f';
             const icon192 = process.env.VITE_PWA_ICON_192 || '/icon-192.png';

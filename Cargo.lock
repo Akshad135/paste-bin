@@ -483,6 +483,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "ghostbin-server"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64",
+ "dotenvy",
+ "futures",
+ "hex",
+ "hmac",
+ "pbkdf2",
+ "rand 0.9.4",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sqlx",
+ "tokio",
+ "tokio-util",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "hashbrown"
 version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -991,29 +1014,6 @@ dependencies = [
  "base64ct",
  "rand_core 0.6.4",
  "subtle",
-]
-
-[[package]]
-name = "pastebin-server"
-version = "0.1.0"
-dependencies = [
- "axum",
- "base64",
- "dotenvy",
- "futures",
- "hex",
- "hmac",
- "pbkdf2",
- "rand 0.9.4",
- "serde",
- "serde_json",
- "sha2",
- "sqlx",
- "tokio",
- "tokio-util",
- "tower-http",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]

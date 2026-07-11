@@ -1,10 +1,10 @@
 [package]
-name = "pastebin-server"
+name = "ghostbin-server"
 version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "pastebin-server"
+name = "ghostbin-server"
 path = "src-rust/main.rs"
 
 [dependencies]

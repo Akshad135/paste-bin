@@ -567,7 +567,7 @@ pub async fn handle_update(
         for file_slug in removed {
             // Only touch the filesystem for slugs that are actually linked to
             // this paste in the DB. This prevents a client-supplied
-            // `file_slug` (e.g. "../../data/pastebin.sqlite") from ever being
+            // `file_slug` (e.g. "../../data/ghostbin.sqlite") from ever being
             // used to delete arbitrary files on disk, since DB slugs are
             // always server-generated and never contain path separators.
             let owned: Option<(i64,)> =

@@ -1,8 +1,8 @@
 {
     "id": "/",
-    "name": "Pastebin",
-    "short_name": "Pastebin",
-    "description": "A simple, private-first pastebin with syntax highlighting",
+    "name": "GhostBin",
+    "short_name": "GhostBin",
+    "description": "A simple, private-first ghostbin with syntax highlighting",
     "start_url": "/",
     "scope": "/",
     "display": "standalone",

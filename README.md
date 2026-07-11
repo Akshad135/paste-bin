@@ -1,6 +1,6 @@
-# pastebin
+# ghostbin
 
-> A fast, self-hosted, private-first pastebin with syntax highlighting, file attachments, and End-to-End Encryption (E2EE), powered by Rust and React.
+> A fast, self-hosted, private-first ghostbin with syntax highlighting, file attachments, and End-to-End Encryption (E2EE), powered by Rust and React.
 
 ## Features
 
@@ -60,16 +60,16 @@ _Catppuccin Latte (Light)_
 
 ## Getting Started (Docker)
 
-You can run pastebin by pulling the pre-built Docker image or by building it yourself.
+You can run ghostbin by pulling the pre-built Docker image or by building it yourself.
 
 ### Using Pre-built Image
 
 ```bash
 docker run -d \
   -p 8788:8788 \
-  -v pastebin-data:/app/data \
+  -v ghostbin-data:/app/data \
   -e AUTH_KEY="your_secure_passphrase" \
-  akshad135/pastebin
+  akshad135/ghostbin
 ```
 
 ### Build from Source
@@ -77,8 +77,8 @@ docker run -d \
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/Akshad135/paste-bin.git
-   cd paste-bin
+   git clone https://github.com/Akshad135/ghostbin.git
+   cd ghostbin
    ```
 
 2. Start the services via Docker Compose:
@@ -127,3 +127,7 @@ For backend limits, you can adjust environment variables:
 - `MAX_FILE_SIZE`: Max size in bytes for a single file attachment (Default: 50 MB).
 
 > **Icons**: Drop your own images into `public/` and update `config.yaml`. The bundled ghost icon is used by default and adapts its color to the active theme.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

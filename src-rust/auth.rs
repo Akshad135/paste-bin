@@ -3,7 +3,7 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use sha2::{Digest, Sha256};
 
-const COOKIE_NAME: &str = "pastebin_auth";
+const COOKIE_NAME: &str = "ghostbin_auth";
 const COOKIE_MAX_AGE: u64 = 60 * 60 * 24 * 30; // 30 days
 
 /// Create the auth token from the secret key.
@@ -13,7 +13,7 @@ const COOKIE_MAX_AGE: u64 = 60 * 60 * 24 * 30; // 30 days
 /// to derive the E2EE master key.
 pub fn create_token(key: &str) -> String {
     let mut hasher = Sha256::new();
-    hasher.update(b"pastebin-session-v1:");
+    hasher.update(b"ghostbin-session-v1:");
     hasher.update(key.as_bytes());
     BASE64.encode(hasher.finalize())
 }

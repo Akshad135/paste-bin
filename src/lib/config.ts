@@ -1,7 +1,7 @@
 // Centralized config — reads VITE_* env vars with sensible defaults.
 // All branding and configurable values go through here.
 
-const appName = import.meta.env.VITE_APP_NAME || 'pastebin';
+const appName = import.meta.env.VITE_APP_NAME || 'ghostbin';
 const appNameAccent = import.meta.env.VITE_APP_NAME_ACCENT ?? 'bin';
 
 export const config = {
@@ -11,7 +11,7 @@ export const config = {
     appNamePrefix: appNameAccent && appName.endsWith(appNameAccent)
         ? appName.slice(0, -appNameAccent.length)
         : appName,
-    appDescription: import.meta.env.VITE_APP_DESCRIPTION || 'A simple, private-first pastebin with syntax highlighting',
+    appDescription: import.meta.env.VITE_APP_DESCRIPTION || 'A simple, private-first ghostbin with syntax highlighting',
 
     // Icons — fall back to bundled static assets
     faviconUrl: import.meta.env.VITE_FAVICON_URL || '/favicon.svg',

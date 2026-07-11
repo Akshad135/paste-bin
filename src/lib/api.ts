@@ -1,4 +1,4 @@
-// API client for pastebin backend
+// API client for ghostbin backend
 
 const API_BASE = "/api";
 

@@ -32,7 +32,7 @@ fn require_auth_key() -> String {
         Err(_) => {
             eprintln!(
                 "\nFATAL: AUTH_KEY environment variable is not set.\n\n\
-                 This passphrase protects your pastebin login and is also used\n\
+                 This passphrase protects your ghostbin login and is also used\n\
                  to derive your end-to-end encryption key, so it must be set\n\
                  explicitly to a unique secret — the server will not start\n\
                  with a guessable built-in default.\n\n\
@@ -83,7 +83,7 @@ async fn main() {
 
     // ── Config from env ────────────────────────────────────────────────
     let db_path =
-        std::env::var("DATABASE_PATH").unwrap_or_else(|_| "./data/pastebin.sqlite".to_string());
+        std::env::var("DATABASE_PATH").unwrap_or_else(|_| "./data/ghostbin.sqlite".to_string());
     let auth_key = require_auth_key();
     let port: u16 = std::env::var("PORT")
         .ok()
@@ -204,7 +204,7 @@ async fn main() {
 
     // ── Start ──────────────────────────────────────────────────────────
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
-    tracing::info!("Pastebin server listening on http://{addr}");
+    tracing::info!("GhostBin server listening on http://{addr}");
 
     let listener = tokio::net::TcpListener::bind(addr)
         .await

@@ -13,7 +13,7 @@
  * `sessionStorage`, while still surviving page reloads and tab closures.
  */
 
-const DB_NAME = "pastebin-keystore";
+const DB_NAME = "ghostbin-keystore";
 const DB_VERSION = 1;
 const STORE_NAME = "keys";
 const KEY_ID = "master";

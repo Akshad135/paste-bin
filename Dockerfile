@@ -41,18 +41,18 @@ RUN apk add --no-cache sqlite-libs libgcc
 RUN mkdir -p /app/data && chown -R 1000:1000 /app/data
 
 # Copy the built backend binary
-COPY --from=backend-builder /app/target/release/pastebin-server /app/pastebin-server
+COPY --from=backend-builder /app/target/release/ghostbin-server /app/ghostbin-server
 
 # Copy the built frontend static files
 COPY --from=frontend-builder /app/dist /app/dist
 
 # Ensure the executable has permissions
-RUN chmod +x /app/pastebin-server
+RUN chmod +x /app/ghostbin-server
 
 # Set environment variables
 ENV HOST=0.0.0.0
 ENV PORT=8788
-ENV DATABASE_URL=sqlite://data/pastebin.sqlite
+ENV DATABASE_URL=sqlite://data/ghostbin.sqlite
 ENV RUST_LOG=info
 
 # AUTH_KEY is intentionally NOT set here. It must be provided explicitly at
@@ -66,4 +66,4 @@ EXPOSE 8788
 # Switch to a non-root user for security
 USER 1000:1000
 
-CMD ["/app/pastebin-server"]
+CMD ["/app/ghostbin-server"]
