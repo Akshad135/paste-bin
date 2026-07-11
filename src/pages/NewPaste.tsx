@@ -178,10 +178,10 @@ export function NewPaste() {
                 const encMime = await encryptText(pasteKey, file.type || 'application/octet-stream');
                 const encBytes = await encryptBytes(pasteKey, await file.arrayBuffer());
                 
-                // Create an encrypted File object for upload
-                const encFile = new File([encBytes], encName, { type: encMime });
+                // Create a Blob for upload
+                const encBlob = new Blob([encBytes]);
                 
-                const res = await api.file.upload(encFile);
+                const res = await api.file.upload(encBlob, encName, encMime);
                 setAttachments(prev => prev.map(a =>
                     a === attachment ? { ...a, uploading: false, slug: res.slug } : a
                 ));

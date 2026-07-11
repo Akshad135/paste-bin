@@ -121,7 +121,7 @@ export async function unwrapPasteKey(
 
 // ─── Share Key (8-char access-code based sharing) ───────────────────────────
 
-const ACCESS_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+const ACCESS_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const ACCESS_CODE_LENGTH = 8;
 // PBKDF2 iterations for client-side key stretching of the access code.
 // High iteration count is important: a 6M-character space must be slow to

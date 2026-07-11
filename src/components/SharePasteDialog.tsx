@@ -11,6 +11,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 
 // PBKDF2 iterations for the server-side slow hash verifier.
 // Must match the constant in src-rust/routes/paste.rs (PBKDF2_ITERS = 200_000).
@@ -132,17 +133,28 @@ export function SharePasteDialog({
                         <p className="text-xs text-muted-foreground mb-2 font-medium uppercase tracking-wider">
                             Access Code
                         </p>
-                        <div className="flex items-center gap-3">
-                            <span className="font-mono text-2xl font-bold tracking-[0.25em] select-all">
-                                {accessCode}
-                            </span>
+                        <div className="flex flex-col items-center gap-4 py-2">
+                            <InputOTP maxLength={8} value={accessCode} readOnly>
+                                <InputOTPGroup>
+                                    <InputOTPSlot index={0} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={1} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={2} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={3} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                </InputOTPGroup>
+                                <InputOTPSeparator />
+                                <InputOTPGroup>
+                                    <InputOTPSlot index={4} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={5} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={6} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                    <InputOTPSlot index={7} className="font-mono text-lg h-10 w-9 sm:w-10 sm:h-12" />
+                                </InputOTPGroup>
+                            </InputOTP>
                             <Button
-                                variant="outline"
-                                size="sm"
-                                className="ml-auto shrink-0"
+                                variant="secondary"
+                                className="w-full max-w-[200px]"
                                 onClick={handleCopyCode}
                             >
-                                {copied ? 'Copied!' : 'Copy'}
+                                {copied ? 'Copied to clipboard!' : 'Copy Code'}
                             </Button>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">

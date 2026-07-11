@@ -23,6 +23,7 @@ import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
 import { ClockIcon } from '@/components/ui/animated-clock';
 
 import { PinIcon } from '@/components/ui/animated-pin';
+import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/components/ui/input-otp';
 import { HourglassIcon } from '@/components/ui/animated-hourglass';
 import { DeleteIcon } from '@/components/ui/animated-delete';
 import { ErrorState } from '@/components/ErrorState';
@@ -70,7 +71,7 @@ function isImageMime(mime: string | null): boolean {
 export function ViewPaste() {
     const { slug } = useParams<{ slug: string }>();
     const { isAuthenticated, masterKey } = useAuth();
-    const { isOffline, isEffectivelyOffline, markStale, clearStale, setBackendDown } = useOffline();
+    const { isEffectivelyOffline, markStale, clearStale, setBackendDown } = useOffline();
     const { mode } = useTheme();
     const navigate = useNavigate();
 
@@ -214,7 +215,7 @@ export function ViewPaste() {
                 if (cancelled) return;
                 console.warn('[pastebin] Could not load paste:', err instanceof Error ? err.message : err);
                 setError(err instanceof Error ? err.message : 'Failed to load paste');
-                if (navigator.onLine) setBackendDown(true);
+                if (navigator.onLine && (err as Error).name !== 'HttpError') setBackendDown(true);
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -439,26 +440,31 @@ export function ViewPaste() {
                     This paste is protected. Enter the 8-character access code to view it.
                 </p>
                 <div className="w-full mt-6 space-y-4 flex flex-col items-center">
-                    <input
-                        id="guest-access-code"
-                        type="text"
-                        inputMode="text"
-                        autoComplete="off"
-                        spellCheck={false}
+                    <InputOTP
                         maxLength={8}
                         value={guestPassword}
-                        onChange={(e) => {
-                            setGuestPassword(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8));
+                        onChange={(val) => {
+                            setGuestPassword(val.toUpperCase().replace(/[^A-Z0-9]/g, ''));
                             setGuestPasswordError('');
                         }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && guestPassword.length === 8) handleGuestUnlock(); }}
+                        onComplete={handleGuestUnlock}
                         disabled={guestUnlocking}
-                        placeholder="XXXXXXXX"
-                        className="w-48 text-center font-mono text-2xl font-bold tracking-[0.3em] uppercase
-                                   border rounded-lg px-4 py-3 bg-background
-                                   focus:outline-none focus:ring-2 focus:ring-primary
-                                   disabled:opacity-50"
-                    />
+                        autoFocus
+                    >
+                        <InputOTPGroup>
+                            <InputOTPSlot index={0} className="font-mono text-xl" />
+                            <InputOTPSlot index={1} className="font-mono text-xl" />
+                            <InputOTPSlot index={2} className="font-mono text-xl" />
+                            <InputOTPSlot index={3} className="font-mono text-xl" />
+                        </InputOTPGroup>
+                        <InputOTPSeparator />
+                        <InputOTPGroup>
+                            <InputOTPSlot index={4} className="font-mono text-xl" />
+                            <InputOTPSlot index={5} className="font-mono text-xl" />
+                            <InputOTPSlot index={6} className="font-mono text-xl" />
+                            <InputOTPSlot index={7} className="font-mono text-xl" />
+                        </InputOTPGroup>
+                    </InputOTP>
 
                     {guestPasswordError && (
                         <p className="text-sm text-destructive w-full text-center">{guestPasswordError}</p>

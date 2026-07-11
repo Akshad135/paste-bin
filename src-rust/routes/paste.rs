@@ -271,11 +271,17 @@ pub async fn handle_get(
     headers: HeaderMap,
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
-    let paste: Option<Paste> = sqlx::query_as("SELECT * FROM pastes WHERE slug = ?")
+    let paste: Option<Paste> = match sqlx::query_as("SELECT * FROM pastes WHERE slug = ?")
         .bind(&slug)
         .fetch_optional(&state.db)
         .await
-        .unwrap_or(None);
+    {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::error!("Failed to fetch paste (mapping error?): {:?}", e);
+            None
+        }
+    };
 
     let Some(paste) = paste else {
         return json_error(StatusCode::NOT_FOUND, "Paste not found").into_response();

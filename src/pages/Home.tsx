@@ -106,7 +106,7 @@ export function Home() {
                 if (cancelled) return;
                 console.warn('[pastebin] Could not load pastes:', err instanceof Error ? err.message : err);
                 setError(err instanceof Error ? err.message : 'Failed to connect to server');
-                if (navigator.onLine) setBackendDown(true);
+                if (navigator.onLine && (err as Error).name !== 'HttpError') setBackendDown(true);
             } finally {
                 if (!cancelled) setLoading(false);
             }

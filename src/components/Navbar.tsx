@@ -4,7 +4,7 @@ import { GhostIcon } from '@/components/GhostIcon';
 import { useDynamicFavicon } from '@/hooks/useDynamicFavicon';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
-import { useOffline } from '@/lib/offlineContext';
+
 import { useTheme } from '@/components/ThemeProvider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,7 +67,6 @@ const ALL_THEMES = [
 
 export function Navbar() {
     const { isAuthenticated, logout, login } = useAuth();
-    const { isEffectivelyOffline } = useOffline();
 
     const navigate = useNavigate();
     const location = useLocation();

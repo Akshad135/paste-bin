@@ -143,6 +143,7 @@ function fetchWithTimeout<T>(path: string): Promise<T> {
     fetch(`${API_BASE}${path}`, {
       signal: controller.signal,
       credentials: "include",
+      cache: "no-store",
       headers: { "Content-Type": "application/json" },
     })
       .then(async (res) => {
@@ -493,7 +494,9 @@ export const api = {
     getFileUrl: (slug: string): string => `${API_BASE}/file/${slug}`,
 
     upload: async (
-      file: File,
+      file: Blob,
+      encName: string,
+      encMime: string,
     ): Promise<{
       slug: string;
       file_name: string;
@@ -501,7 +504,9 @@ export const api = {
       file_size: number;
     }> => {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", file, "encrypted_file");
+      formData.append("file_name", encName);
+      formData.append("mime_type", encMime);
 
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), 60000); // 60s timeout for uploads

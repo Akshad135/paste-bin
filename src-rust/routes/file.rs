@@ -52,8 +52,6 @@ pub async fn handle_upload(
     while let Ok(Some(field)) = multipart.next_field().await {
         let field_name = field.name().unwrap_or("").to_string();
         if field_name == "file" {
-            file_name = field.file_name().map(|s| s.to_string());
-            mime_type = field.content_type().map(|s| s.to_string());
             match field.bytes().await {
                 Ok(bytes) => {
                     if bytes.len() > state.max_file_size {
@@ -73,6 +71,14 @@ pub async fn handle_upload(
                     return json_error(StatusCode::BAD_REQUEST, "Failed to read file")
                         .into_response();
                 }
+            }
+        } else if field_name == "file_name" {
+            if let Ok(text) = field.text().await {
+                file_name = Some(text);
+            }
+        } else if field_name == "mime_type" {
+            if let Ok(text) = field.text().await {
+                mime_type = Some(text);
             }
         }
     }
@@ -299,11 +305,17 @@ pub async fn get_files_for_paste(
     db: &sqlx::SqlitePool,
     paste_slug: &str,
 ) -> Vec<FileEntry> {
-    sqlx::query_as::<_, FileEntry>("SELECT * FROM files WHERE paste_slug = ? ORDER BY created_at ASC")
+    match sqlx::query_as::<_, FileEntry>("SELECT * FROM files WHERE paste_slug = ? ORDER BY created_at ASC")
         .bind(paste_slug)
         .fetch_all(db)
         .await
-        .unwrap_or_default()
+    {
+        Ok(files) => files,
+        Err(e) => {
+            tracing::error!("Failed to fetch files for paste {} (mapping error?): {:?}", paste_slug, e);
+            Vec::new()
+        }
+    }
 }
 
 /// Helper: Delete all files linked to a paste from disk.
