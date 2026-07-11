@@ -39,9 +39,16 @@ pub async fn run_migrations(pool: &SqlitePool) {
             .unwrap_or_else(|e| panic!("Failed to run migration: {e}\nStatement: {trimmed}"));
     }
 
-    // Migration: add shared_encrypted_key for existing databases and create index
+    // Column migrations: add new columns for existing databases.
+    // Each statement ignores "duplicate column name" so it is idempotent.
     let alter_statements = [
+        // Legacy column (kept for read-back compatibility during rollout, can be
+        // dropped in a future migration once all rows have been migrated).
         "ALTER TABLE pastes ADD COLUMN shared_encrypted_key TEXT",
+        // New secure-share columns
+        "ALTER TABLE pastes ADD COLUMN share_wrapped_paste_key TEXT",
+        "ALTER TABLE pastes ADD COLUMN share_auth_salt TEXT",
+        "ALTER TABLE pastes ADD COLUMN share_auth_verifier TEXT",
         "CREATE INDEX IF NOT EXISTS idx_pastes_expires_at ON pastes(expires_at)",
     ];
 

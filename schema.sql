@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS pastes (
     file_size INTEGER,
     encrypted_paste_key TEXT NOT NULL,
     encrypted_preview TEXT,
-    shared_encrypted_key TEXT
+    share_wrapped_paste_key TEXT,
+    share_auth_salt TEXT,
+    share_auth_verifier TEXT
 );
 
 CREATE TABLE IF NOT EXISTS files (

@@ -205,7 +205,10 @@ pub async fn handle_download(
     // Access control, mirroring the paste access rules in `paste::handle_get`:
     // - Authenticated (owner) requests can always download.
     // - Unauthenticated requests are only allowed if the file is linked to a
-    //   paste that has been explicitly shared (shared_encrypted_key is set).
+    //   paste that has an active new-scheme share (share_wrapped_paste_key is set).
+    //   The legacy `shared_encrypted_key` column is intentionally NOT checked here
+    //   — revoke/re-share always clears it, so trusting it would allow stale
+    //   old-scheme grants to bypass revocation.
     // - Files not yet linked to any paste (e.g. uploaded but not attached)
     //   are never accessible without authentication.
     let mut paste_is_expired = false;
@@ -213,14 +216,14 @@ pub async fn handle_download(
 
     if let Some(paste_slug) = &file.paste_slug {
         let paste_info: Option<(Option<String>, Option<String>)> =
-            sqlx::query_as("SELECT shared_encrypted_key, expires_at FROM pastes WHERE slug = ?")
+            sqlx::query_as("SELECT share_wrapped_paste_key, expires_at FROM pastes WHERE slug = ?")
                 .bind(paste_slug)
                 .fetch_optional(&state.db)
                 .await
                 .unwrap_or(None);
 
-        if let Some((shared_key, expires_at)) = paste_info {
-            is_publicly_shared = shared_key.is_some();
+        if let Some((share_wrapped, expires_at)) = paste_info {
+            is_publicly_shared = share_wrapped.is_some();
 
             if let Some(exp) = expires_at {
                 paste_is_expired = sqlx::query_scalar("SELECT ? <= datetime('now')")

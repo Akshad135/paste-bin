@@ -119,49 +119,115 @@ export async function unwrapPasteKey(
   );
 }
 
-// ─── Share Key (password-based sharing) ─────────────────────────────────────
+// ─── Share Key (8-char access-code based sharing) ───────────────────────────
+
+const ACCESS_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+const ACCESS_CODE_LENGTH = 8;
+// PBKDF2 iterations for client-side key stretching of the access code.
+// High iteration count is important: a 6M-character space must be slow to
+// brute-force even if an attacker captures the server-side verifier.
+const SHARE_PBKDF2_ITERATIONS = 600_000;
 
 /**
- * Derive a ShareKey from a user-provided share password and the paste slug.
- * The slug is used as the salt so the same password produces different keys
- * for different pastes.
+ * Generate a random 8-character alphanumeric access code.
+ * Uses an unambiguous alphabet (no 0/O/I/l confusion).
  */
-export async function deriveShareKey(
-  password: string,
-  slug: string,
-): Promise<CryptoKey> {
-  const enc = new TextEncoder();
-  const salt = enc.encode(slug);
+export function generateAccessCode(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(ACCESS_CODE_LENGTH * 2));
+  let result = '';
+  for (let i = 0; i < bytes.length && result.length < ACCESS_CODE_LENGTH; i++) {
+    const idx = bytes[i] % ACCESS_CODE_CHARS.length;
+    result += ACCESS_CODE_CHARS[idx];
+  }
+  return result;
+}
 
+/**
+ * Derive two cryptographically separate secrets from the access code + slug.
+ *
+ * Flow:
+ *   masterBits = PBKDF2(accessCode, salt=slug, 600_000 iters, SHA-256, 512 bits)
+ *   unlockKey  = HKDF-Expand(masterBits, info="unlock")  → AES-GCM-256 key
+ *   authSecret = HKDF-Expand(masterBits, info="auth")    → 32-byte hex string
+ *
+ * - `unlockKey` wraps/unwraps the paste key in the browser. The server never
+ *   sees it and therefore cannot decrypt the paste.
+ * - `authSecret` is sent to the server during unlock. The server hashes it
+ *   with PBKDF2+salt and compares to the stored verifier. Because `authSecret`
+ *   ≠ `unlockKey`, the server learning `authSecret` gives it no decryption
+ *   capability.
+ */
+export async function deriveShareSecrets(
+  accessCode: string,
+  slug: string,
+): Promise<{ unlockKey: CryptoKey; authSecret: string }> {
+  const enc = new TextEncoder();
+
+  // Step 1: PBKDF2 to stretch the low-entropy access code into 512 bits
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    enc.encode(password),
+    enc.encode(accessCode),
     "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const masterBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: enc.encode(slug) as unknown as ArrayBuffer,
+      iterations: SHARE_PBKDF2_ITERATIONS,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    512, // 64 bytes — 32 for unlock, 32 for auth
+  );
+
+  // Step 2: HKDF to split into two independent outputs
+  const hkdfKey = await crypto.subtle.importKey(
+    "raw",
+    masterBits,
+    "HKDF",
     false,
     ["deriveKey", "deriveBits"],
   );
 
-  return crypto.subtle.deriveKey(
+  // Derive the AES-GCM unlock key (used to wrap/unwrap the paste key)
+  const unlockKey = await crypto.subtle.deriveKey(
     {
-      name: "PBKDF2",
-      salt,
-      iterations: PBKDF2_ITERATIONS,
+      name: "HKDF",
       hash: "SHA-256",
+      salt: new Uint8Array(0) as unknown as ArrayBuffer,
+      info: enc.encode("unlock") as unknown as ArrayBuffer,
     },
-    keyMaterial,
+    hkdfKey,
     { name: "AES-GCM", length: AES_KEY_LENGTH },
-    false,
+    false, // non-extractable — raw key bytes never touch JS
     ["wrapKey", "unwrapKey"],
   );
+
+  // Derive the auth bits (sent to server for hash verification)
+  const authBits = await crypto.subtle.deriveBits(
+    {
+      name: "HKDF",
+      hash: "SHA-256",
+      salt: new Uint8Array(0) as unknown as ArrayBuffer,
+      info: enc.encode("auth") as unknown as ArrayBuffer,
+    },
+    hkdfKey,
+    256, // 32 bytes
+  );
+  const authSecret = bytesToBase64(new Uint8Array(authBits));
+
+  return { unlockKey, authSecret };
 }
 
-/** Wrap a PasteKey with a ShareKey for sharing. Returns base64(IV‖wrapped). */
+/** Wrap a PasteKey with the share unlockKey for guest sharing. Returns base64(IV‖wrapped). */
 export async function wrapPasteKeyForShare(
-  shareKey: CryptoKey,
+  unlockKey: CryptoKey,
   pasteKey: CryptoKey,
 ): Promise<string> {
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-  const wrapped = await crypto.subtle.wrapKey("raw", pasteKey, shareKey, {
+  const wrapped = await crypto.subtle.wrapKey("raw", pasteKey, unlockKey, {
     name: "AES-GCM",
     iv,
   });
@@ -171,9 +237,9 @@ export async function wrapPasteKeyForShare(
   return bytesToBase64(combined);
 }
 
-/** Unwrap a PasteKey using a ShareKey (guest decryption). */
+/** Unwrap a PasteKey using the share unlockKey (guest decryption). */
 export async function unwrapPasteKeyFromShare(
-  shareKey: CryptoKey,
+  unlockKey: CryptoKey,
   wrappedBase64: string,
 ): Promise<CryptoKey> {
   const combined = base64ToBytes(wrappedBase64);
@@ -182,7 +248,7 @@ export async function unwrapPasteKeyFromShare(
   return crypto.subtle.unwrapKey(
     "raw",
     wrappedKey,
-    shareKey,
+    unlockKey,
     { name: "AES-GCM", iv },
     { name: "AES-GCM", length: AES_KEY_LENGTH },
     true,

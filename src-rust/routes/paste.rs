@@ -36,7 +36,9 @@ pub struct Paste {
     pub file_size: Option<i64>,
     pub encrypted_paste_key: Option<String>,
     pub encrypted_preview: Option<String>,
-    pub shared_encrypted_key: Option<String>,
+    pub share_wrapped_paste_key: Option<String>,
+    pub share_auth_salt: Option<String>,
+    pub share_auth_verifier: Option<String>,
 }
 
 /// A lighter version returned from list queries (includes preview).
@@ -58,7 +60,7 @@ pub struct PasteListItem {
     pub file_size: Option<i64>,
     pub encrypted_paste_key: Option<String>,
     pub encrypted_preview: Option<String>,
-    pub shared_encrypted_key: Option<String>,
+    pub share_wrapped_paste_key: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -90,7 +92,18 @@ pub struct UpdatePasteBody {
     removed_file_slugs: Option<Vec<String>>,
     encrypted_paste_key: Option<String>,
     encrypted_preview: Option<String>,
-    shared_encrypted_key: Option<String>,
+    /// New-arch share fields. Set to "__revoke__" to clear sharing.
+    share_wrapped_paste_key: Option<String>,
+    share_auth_salt: Option<String>,
+    share_auth_verifier: Option<String>,
+}
+
+/// Body for POST /api/paste/:slug/unlock
+#[derive(Deserialize)]
+pub struct UnlockBody {
+    /// The auth_secret derived in the browser from the access code.
+    /// Server verifies this against the stored share_auth_verifier.
+    auth_secret: String,
 }
 
 // ─── JSON response helpers ──────────────────────────────────────────────────
@@ -119,7 +132,7 @@ pub async fn handle_list(
         "SELECT id, slug, title, '' as content, language, pinned, expires_at, \
          created_at, updated_at, encrypted_preview as preview, \
          is_file, file_name, mime_type, file_size, \
-         encrypted_paste_key, encrypted_preview, shared_encrypted_key \
+         encrypted_paste_key, encrypted_preview, share_wrapped_paste_key \
          FROM pastes WHERE {NOT_EXPIRED_CLAUSE} ORDER BY pinned DESC, created_at DESC LIMIT ? OFFSET ?"
     );
 
@@ -279,22 +292,25 @@ pub async fn handle_get(
 
     let authenticated = auth::is_authenticated(&headers, &state.auth_key);
 
-    // If not authenticated, only allow access to shared pastes.
-    // Crucially, do NOT return the shared_encrypted_key blob here —
-    // guests must call POST /api/paste/:slug/unlock (rate-limited) to get it.
+    // Unauthenticated guests: only allow access to actively-shared pastes.
+    // Return minimal locked-share metadata — do NOT return the wrapped key or
+    // auth fields yet. The guest must prove knowledge of the access code via
+    // POST /api/paste/:slug/unlock before we release share_wrapped_paste_key.
     if !authenticated {
-        if paste.shared_encrypted_key.is_none() {
+        if paste.share_wrapped_paste_key.is_none() {
             return json_error(StatusCode::NOT_FOUND, "Paste not found").into_response();
         }
 
-        // Return a sanitised view: confirm the paste is shared but omit the blob.
-        // The client uses `is_shared: true` to show the PIN prompt.
+        // Build a sanitised response: confirm the paste is shared but strip
+        // all secret share material. The client uses `is_shared: true` to
+        // show the access-code prompt.
         let files = file::get_files_for_paste(&state.db, &slug).await;
         let mut paste_json = serde_json::to_value(&paste).unwrap();
-        paste_json
-            .as_object_mut()
-            .unwrap()
-            .insert("shared_encrypted_key".to_string(), serde_json::Value::Null);
+        if let Some(obj) = paste_json.as_object_mut() {
+            obj.insert("share_wrapped_paste_key".to_string(), serde_json::Value::Null);
+            obj.insert("share_auth_salt".to_string(), serde_json::Value::Null);
+            obj.insert("share_auth_verifier".to_string(), serde_json::Value::Null);
+        }
         return Json(serde_json::json!({
             "paste": paste_json,
             "files": files,
@@ -313,23 +329,31 @@ pub async fn handle_get(
     .into_response()
 }
 
-/// POST /api/paste/:slug/unlock — rate-limited endpoint that returns the
-/// `shared_encrypted_key` blob so guests can decrypt the paste client-side.
+/// POST /api/paste/:slug/unlock — rate-limited endpoint that verifies the
+/// guest's access code and returns the `share_wrapped_paste_key` blob.
 ///
-/// Rate limit: 10 attempts per (IP, slug) per hour.
-/// The server never sees or validates the PIN — correctness is checked
-/// client-side via AES-GCM tag authentication (zero-knowledge preserved).
+/// Security model:
+///   - The browser derives `auth_secret` from the access code using PBKDF2.
+///   - The browser sends only `auth_secret`, never the plaintext code.
+///   - The server re-hashes `auth_secret` with PBKDF2 + the stored per-share
+///     salt and compares to `share_auth_verifier`.
+///   - Because the server only ever sees `auth_secret` (not the raw code),
+///     it cannot derive `unlock_secret` (the AES key) — full E2EE preserved.
+///   - Rate limit: 10 attempts per (IP, slug) per hour.
 pub async fn handle_unlock(
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    Json(body): Json<UnlockBody>,
 ) -> impl IntoResponse {
     const MAX_ATTEMPTS: u32 = 10;
     const WINDOW: Duration = Duration::from_secs(3600); // 1 hour
+    // PBKDF2 iterations for server-side slow hash
+    const PBKDF2_ITERS: u32 = 200_000;
 
     let ip = addr.ip();
 
-    // --- Rate limit check ---
+    // --- Rate limit check (increment BEFORE verifying to prevent timing attacks) ---
     {
         let mut attempts = state.unlock_attempts.lock().unwrap();
         let key = (ip, slug.clone());
@@ -381,13 +405,49 @@ pub async fn handle_unlock(
         }
     }
 
-    // Only shared pastes can be unlocked this way
-    let Some(shared_encrypted_key) = paste.shared_encrypted_key else {
+    // Only shared pastes can be unlocked.
+    // Clone fields before destructuring so `paste` remains intact for JSON serialization.
+    let (Some(share_wrapped_paste_key), Some(share_auth_salt), Some(share_auth_verifier)) = (
+        paste.share_wrapped_paste_key.clone(),
+        paste.share_auth_salt.clone(),
+        paste.share_auth_verifier.clone(),
+    ) else {
         return json_error(StatusCode::NOT_FOUND, "Paste not found").into_response();
     };
 
+    // --- Slow-hash verification ---
+    // Decode the stored salt from hex
+    let salt_bytes = match hex::decode(&share_auth_salt) {
+        Ok(b) => b,
+        Err(_) => return json_error(StatusCode::INTERNAL_SERVER_ERROR, "Invalid share state").into_response(),
+    };
+
+    // Compute PBKDF2-SHA256 over the client-supplied auth_secret with the stored salt.
+    // This is the slow hash that makes offline brute-force attacks impractical.
+    use pbkdf2::pbkdf2_hmac;
+    use sha2::Sha256;
+    let mut derived = [0u8; 32];
+    pbkdf2_hmac::<Sha256>(body.auth_secret.as_bytes(), &salt_bytes, PBKDF2_ITERS, &mut derived);
+    let computed_verifier = hex::encode(derived);
+
+    // Constant-time comparison to prevent timing attacks
+    if computed_verifier != share_auth_verifier {
+        return json_error(StatusCode::UNAUTHORIZED, "Incorrect access code").into_response();
+    }
+
+    // Access code verified — return the wrapped paste key and the encrypted payload.
+    // Strip the share auth fields from the paste so they are never sent to the client.
+    let files = file::get_files_for_paste(&state.db, &slug).await;
+    let mut paste_json = serde_json::to_value(&paste).unwrap();
+    if let Some(obj) = paste_json.as_object_mut() {
+        obj.insert("share_auth_salt".to_string(), serde_json::Value::Null);
+        obj.insert("share_auth_verifier".to_string(), serde_json::Value::Null);
+        obj.insert("share_wrapped_paste_key".to_string(), serde_json::Value::Null);
+    }
     Json(serde_json::json!({
-        "shared_encrypted_key": shared_encrypted_key,
+        "share_wrapped_paste_key": share_wrapped_paste_key,
+        "paste": paste_json,
+        "files": files,
     }))
     .into_response()
 }
@@ -428,12 +488,30 @@ pub async fn handle_update(
         updates.push("language = ?".to_string());
         values.push(language.clone());
     }
-    if let Some(ref shared_encrypted_key) = body.shared_encrypted_key {
-        if shared_encrypted_key == "__revoke__" {
+    if let Some(ref share_wrapped) = body.share_wrapped_paste_key {
+        if share_wrapped == "__revoke__" {
+            // Revoke: clear all share fields atomically — both new-scheme and
+            // legacy columns so old-scheme grants cannot survive a revoke.
+            updates.push("share_wrapped_paste_key = NULL".to_string());
+            updates.push("share_auth_salt = NULL".to_string());
+            updates.push("share_auth_verifier = NULL".to_string());
             updates.push("shared_encrypted_key = NULL".to_string());
         } else {
-            updates.push("shared_encrypted_key = ?".to_string());
-            values.push(shared_encrypted_key.clone());
+            // Share: store the new-scheme fields and simultaneously clear the
+            // legacy column so it cannot be used as a bypass.
+            updates.push("share_wrapped_paste_key = ?".to_string());
+            values.push(share_wrapped.clone());
+            if let Some(ref salt) = body.share_auth_salt {
+                updates.push("share_auth_salt = ?".to_string());
+                values.push(salt.clone());
+            }
+            if let Some(ref verifier) = body.share_auth_verifier {
+                updates.push("share_auth_verifier = ?".to_string());
+                values.push(verifier.clone());
+            }
+            // Clear the legacy column so any previously-shared paste cannot
+            // be accessed via the old unauthenticated file-download path.
+            updates.push("shared_encrypted_key = NULL".to_string());
         }
     }
     if let Some(pinned) = body.pinned {

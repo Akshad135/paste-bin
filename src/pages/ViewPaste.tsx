@@ -3,12 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { codeToHtml } from 'shiki';
 import { api, type Paste, type FileEntry } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
-import { unwrapPasteKey, decryptText, decryptBytes, unwrapPasteKeyFromShare, deriveShareKey } from '@/lib/crypto';
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
+import { unwrapPasteKey, decryptText, decryptBytes, unwrapPasteKeyFromShare, deriveShareSecrets } from '@/lib/crypto';
 import { SharePasteDialog } from '@/components/SharePasteDialog';
 import { LockIcon } from '@/components/ui/animated-lock';
 import { useOffline } from '@/lib/offlineContext';
@@ -296,46 +291,56 @@ export function ViewPaste() {
     };
 
     const handleGuestUnlock = async (overridePassword?: any) => {
-        const pass = typeof overridePassword === 'string' ? overridePassword : guestPassword;
-        if (!slug || !rawPasteData || !pass.trim()) return;
+        const code = typeof overridePassword === 'string' ? overridePassword : guestPassword;
+        if (!slug || !rawPasteData || code.length < 8) return;
         setGuestUnlocking(true);
         setGuestPasswordError('');
         try {
-            // Step 1: Fetch the encrypted blob from the server (rate-limited).
-            // This is the key change — every PIN attempt costs a server round-trip.
-            let sharedEncryptedKey: string;
+            // Step 1: Derive the two secrets from the access code locally.
+            // The plaintext code never leaves the browser.
+            const { unlockKey, authSecret } = await deriveShareSecrets(code, slug);
+
+            // Step 2: Send authSecret to the server. The server verifies it
+            // against the stored slow hash and returns the encrypted payload.
+            let unlockResult: { share_wrapped_paste_key: string; paste: any; files: any[] };
             try {
-                sharedEncryptedKey = await api.paste.unlock(slug);
+                unlockResult = await api.paste.unlock(slug, authSecret);
             } catch (e: any) {
                 if (e.message === 'TOO_MANY_ATTEMPTS') {
                     setGuestPasswordError('Too many attempts. Please wait an hour before trying again.');
+                } else if (e.message && e.message.toLowerCase().includes('incorrect')) {
+                    setGuestPasswordError('Incorrect access code. Please try again.');
                 } else {
                     setGuestPasswordError('Could not reach server. Please try again.');
                 }
                 return;
             }
 
-            // Step 2: Derive the share key from the PIN and decrypt locally.
-            const shareKey = await deriveShareKey(pass, slug);
+            // Step 3: Use unlockKey to unwrap the paste key locally.
             let pasteKey;
             try {
-                pasteKey = await unwrapPasteKeyFromShare(shareKey, sharedEncryptedKey);
+                pasteKey = await unwrapPasteKeyFromShare(unlockKey, unlockResult.share_wrapped_paste_key);
             } catch (e) {
                 console.error("Failed to unwrap paste key:", e);
-                throw new Error("UNWRAP_FAIL");
+                // If unwrap fails the access code was wrong (server verifier collision is negligible)
+                setGuestPasswordError('Incorrect access code. Please try again.');
+                return;
             }
-            
+
+            // Step 4: Decrypt the payload entirely in the browser.
             try {
-                const dec = await decryptPasteData(rawPasteData.paste, rawPasteData.files, pasteKey);
+                const rawPaste = unlockResult.paste;
+                const rawFiles = unlockResult.files || [];
+                const dec = await decryptPasteData(rawPaste, rawFiles, pasteKey);
                 setPaste(dec.paste);
                 setFiles(dec.files);
                 setNeedsPassword(false);
             } catch (e) {
                 console.error("Failed to decrypt paste data:", e);
-                throw new Error("DECRYPT_FAIL");
+                setGuestPasswordError('Decryption failed. Please try again.');
             }
         } catch (e: any) {
-            setGuestPasswordError('Incorrect PIN. Please try again.');
+            setGuestPasswordError('Something went wrong. Please try again.');
         } finally {
             setGuestUnlocking(false);
         }
@@ -412,40 +417,45 @@ export function ViewPaste() {
         );
     }
 
-    // Guest password prompt
+    // Guest access code prompt
     if (needsPassword && !paste) {
         return (
             <div className="flex flex-col items-center justify-center py-24 text-center max-w-md mx-auto px-4">
                 <div className="rounded-full bg-primary/10 p-5 mb-6">
                     <LockIcon className="h-10 w-10 text-primary" />
                 </div>
-                <h2 className="text-2xl font-bold tracking-tight">Password Required</h2>
+                <h2 className="text-2xl font-bold tracking-tight">Access Code Required</h2>
                 <p className="text-base text-muted-foreground mt-3">
-                    This paste is protected. Enter the password to view it.
+                    This paste is protected. Enter the 8-character access code to view it.
                 </p>
-                <div className="w-full mt-6 space-y-6 flex flex-col items-center">
-                    <InputOTP
-                        maxLength={6}
+                <div className="w-full mt-6 space-y-4 flex flex-col items-center">
+                    <input
+                        id="guest-access-code"
+                        type="text"
+                        inputMode="text"
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={8}
                         value={guestPassword}
-                        onChange={(val) => { setGuestPassword(val); setGuestPasswordError(''); }}
+                        onChange={(e) => {
+                            setGuestPassword(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8));
+                            setGuestPasswordError('');
+                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && guestPassword.length === 8) handleGuestUnlock(); }}
                         disabled={guestUnlocking}
-                    >
-                        <InputOTPGroup>
-                            <InputOTPSlot index={0} />
-                            <InputOTPSlot index={1} />
-                            <InputOTPSlot index={2} />
-                            <InputOTPSlot index={3} />
-                            <InputOTPSlot index={4} />
-                            <InputOTPSlot index={5} />
-                        </InputOTPGroup>
-                    </InputOTP>
-                    
+                        placeholder="XXXXXXXX"
+                        className="w-48 text-center font-mono text-2xl font-bold tracking-[0.3em] uppercase
+                                   border rounded-lg px-4 py-3 bg-background
+                                   focus:outline-none focus:ring-2 focus:ring-primary
+                                   disabled:opacity-50"
+                    />
+
                     {guestPasswordError && (
                         <p className="text-sm text-destructive w-full text-center">{guestPasswordError}</p>
                     )}
                     <Button
                         className="w-full max-w-[250px]"
-                        disabled={guestUnlocking || guestPassword.length < 6}
+                        disabled={guestUnlocking || guestPassword.length < 8}
                         onClick={handleGuestUnlock}
                     >
                         {guestUnlocking ? 'Unlocking...' : 'Unlock Paste'}
@@ -464,7 +474,7 @@ export function ViewPaste() {
 
     if (!paste) return null;
 
-    const isShared = !!paste.shared_encrypted_key;
+    const isShared = !!paste.share_wrapped_paste_key;
 
     const lineCount = paste.content?.trim() ? paste.content.split('\n').length : 0;
     const canEdit = isAuthenticated && !isOffline;

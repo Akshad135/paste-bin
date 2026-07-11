@@ -32,7 +32,9 @@ export interface Paste {
   file_count?: number;
   encrypted_paste_key?: string | null;
   encrypted_preview?: string | null;
-  shared_encrypted_key?: string | null;
+  share_wrapped_paste_key?: string | null;
+  share_auth_salt?: string | null;
+  share_auth_verifier?: string | null;
 }
 
 export interface FileEntry {
@@ -397,7 +399,9 @@ export const api = {
         removed_file_slugs?: string[];
         encrypted_paste_key?: string;
         encrypted_preview?: string;
-        shared_encrypted_key?: string;
+        share_wrapped_paste_key?: string;
+        share_auth_salt?: string;
+        share_auth_verifier?: string;
       },
     ) =>
       request<{ success: boolean }>(`/paste/${slug}`, {
@@ -416,24 +420,38 @@ export const api = {
         body: JSON.stringify({ pinned: pinned ? 1 : 0 }),
       }),
 
-    share: (slug: string, sharedEncryptedKey: string) =>
+    share: (
+      slug: string,
+      shareWrappedPasteKey: string,
+      shareAuthSalt: string,
+      shareAuthVerifier: string,
+    ) =>
       request<{ success: boolean }>(`/paste/${slug}`, {
         method: "PUT",
-        body: JSON.stringify({ shared_encrypted_key: sharedEncryptedKey }),
+        body: JSON.stringify({
+          share_wrapped_paste_key: shareWrappedPasteKey,
+          share_auth_salt: shareAuthSalt,
+          share_auth_verifier: shareAuthVerifier,
+        }),
       }),
 
     revoke: (slug: string) =>
       request<{ success: boolean }>(`/paste/${slug}`, {
         method: "PUT",
-        body: JSON.stringify({ shared_encrypted_key: "__revoke__" }),
+        body: JSON.stringify({ share_wrapped_paste_key: "__revoke__" }),
       }),
 
     /**
      * Rate-limited unlock: POST /api/paste/:slug/unlock
-     * Returns the shared_encrypted_key blob if under the attempt limit (10/hr).
+     * Sends the browser-derived auth_secret (NOT the plaintext access code).
+     * Server verifies auth_secret via slow hash and returns share_wrapped_paste_key
+     * plus the full encrypted paste payload on success.
      * Throws an Error with message "TOO_MANY_ATTEMPTS" on HTTP 429.
      */
-    unlock: async (slug: string): Promise<string> => {
+    unlock: async (
+      slug: string,
+      authSecret: string,
+    ): Promise<{ share_wrapped_paste_key: string; paste: any; files: any[] }> => {
       const controller = new AbortController();
       const id = setTimeout(() => controller.abort(), 10000);
       try {
@@ -442,6 +460,7 @@ export const api = {
           signal: controller.signal,
           credentials: "include",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ auth_secret: authSecret }),
         });
         clearTimeout(id);
         let data: unknown;
@@ -455,7 +474,7 @@ export const api = {
           throw new Error(
             (data as { error?: string }).error || "Unlock failed",
           );
-        return (data as { shared_encrypted_key: string }).shared_encrypted_key;
+        return data as { share_wrapped_paste_key: string; paste: any; files: any[] };
       } catch (err) {
         clearTimeout(id);
         if (err instanceof Error) throw err;
