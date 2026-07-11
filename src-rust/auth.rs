@@ -51,13 +51,13 @@ pub fn is_authenticated(headers: &HeaderMap, auth_key: &str) -> bool {
 pub fn create_auth_cookie(auth_key: &str) -> HeaderValue {
     let token = create_token(auth_key);
     let cookie = format!(
-        "{COOKIE_NAME}={token}; Path=/; HttpOnly; SameSite=Lax; Max-Age={COOKIE_MAX_AGE}"
+        "{COOKIE_NAME}={token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age={COOKIE_MAX_AGE}"
     );
     HeaderValue::from_str(&cookie).unwrap()
 }
 
 /// Create a Set-Cookie header value that clears the auth cookie.
 pub fn clear_auth_cookie() -> HeaderValue {
-    let cookie = format!("{COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0");
+    let cookie = format!("{COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0");
     HeaderValue::from_str(&cookie).unwrap()
 }

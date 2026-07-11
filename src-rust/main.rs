@@ -133,7 +133,7 @@ async fn main() {
     // ── Background Cleanup Task ────────────────────────────────────────
     let cleanup_state = state.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(10)); // 10 seconds
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60)); // 1 minute
         loop {
             interval.tick().await;
             tracing::info!("Running cleanup task...");
@@ -145,7 +145,7 @@ async fn main() {
                 "SELECT f.slug FROM files f
                  LEFT JOIN pastes p ON f.paste_slug = p.slug
                  WHERE (p.expires_at IS NOT NULL AND p.expires_at <= datetime('now'))
-                    OR (f.paste_slug IS NULL AND f.created_at <= datetime('now', '-1 hour'))"
+                    OR (f.paste_slug IS NULL AND f.created_at <= datetime('now', '-15 minutes'))"
             )
             .fetch_all(&cleanup_state.db)
             .await;
