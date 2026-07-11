@@ -10,9 +10,8 @@
 - End-to-End Encryption (E2EE) derived from your auth passphrase
 - Single-user authentication (no accounts needed)
 - PWA support for mobile and desktop installation
-- Offline support for cached pastes
 - Pin important pastes to the top
-- Public and private visibility modes
+- 8 Character Code based sharing
 - Zero tracking (no analytics, no tracking cookies)
 
 ## Screenshots
@@ -95,7 +94,7 @@ docker run -d \
 
 ## Local Build
 
-If you want to run the project natively or contribute to the development, you will need **Node.js** and **Rust**.
+If you want to run the project natively you will need **Node.js** and **Rust**.
 
 ### Prerequisites
 
