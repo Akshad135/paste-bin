@@ -14,7 +14,7 @@ use sqlx::FromRow;
 use super::file;
 use crate::auth;
 use crate::expiry::{
-    ACTIVE_PASTE_CLAUSE, BurnAction, compute_burn_at, parse_burn_action, pending_delete_at,
+    BurnAction, compute_burn_at, parse_burn_action, pending_delete_at,
 };
 use crate::slugs::generate_slug;
 use crate::state::AppState;
@@ -318,7 +318,8 @@ pub async fn handle_list(
         .map(|p| serde_json::to_value(p).unwrap())
         .collect();
 
-    let count_query = format!("SELECT COUNT(*) as total FROM pastes WHERE {clause}");
+    let count_clause = visible_paste_clause();
+    let count_query = format!("SELECT COUNT(*) as total FROM pastes WHERE {count_clause}");
     let total: i64 = sqlx::query_scalar(&count_query)
         .fetch_one(&state.db)
         .await

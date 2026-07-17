@@ -1,7 +1,7 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const MAX_BURN_SECONDS: u64 = 30 * 24 * 60 * 60;
-pub const ACTIVE_PASTE_CLAUSE: &str = "burn_pending_delete_at IS NULL";
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BurnAction {
