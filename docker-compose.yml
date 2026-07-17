@@ -16,6 +16,11 @@ services:
       - MAX_TEXT_SIZE=${MAX_TEXT_SIZE:-524288}
       # Maximum size (bytes) for a single file attachment. Default: 52428800 (50 MB).
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-52428800}
+      # Set to your public URL to restrict CORS to your domain only.
+      # This protects the /unlock endpoint from cross-origin CPU attacks.
+      # Leave unset for local development (defaults to open CORS with a warning).
+      # Example: ALLOWED_ORIGINS=https://paste.mydomain.com
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
       - RUST_LOG=info
     restart: unless-stopped
 

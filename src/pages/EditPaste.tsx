@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useOffline } from '@/lib/offlineContext';
 import { api, type Paste } from '@/lib/api';
 import { unwrapPasteKey, decryptText, encryptText, encryptBytes } from '@/lib/crypto';
-import { LANGUAGES, EXPIRATION_OPTIONS } from '@/lib/constants';
+import { LANGUAGES, validateBurnRule, type BurnAction, type BurnUnit } from '@/lib/constants';
 import { config } from '@/lib/config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,17 +29,23 @@ import { DeleteIcon } from '@/components/ui/animated-delete';
 import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
 import { BadgeAlertIcon } from '@/components/ui/animated-badge-alert';
 import { PinIcon } from '@/components/ui/animated-pin';
-import { HourglassIcon } from '@/components/ui/animated-hourglass';
 import { UploadIcon } from '@/components/ui/animated-upload';
 import { FileTextIcon } from '@/components/ui/animated-file-text';
-import { cn, truncateFileName } from '@/lib/utils';
+import { BurnRulesControl } from '@/components/BurnRulesControl';
+import { cn, truncateFileName, formatFileSize } from '@/lib/utils';
 import { toast } from 'sonner';
 
-function formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
+// When editing a paste that already has a time-based burn, we do NOT
+// reverse-engineer the remaining seconds back into a duration because that
+// would cause the user to accidentally shrink the burn window on every save
+// (e.g. a 1-day paste edited 12 hours later would re-submit "12 hours").
+// Instead we leave the value blank and show a warning in the UI.
+function inferBurnTimeFields(burnAt: string | null): { value: string; unit: BurnUnit; isPast: boolean } {
+    if (!burnAt) return { value: '', unit: 'hour', isPast: false };
+    const remaining = new Date(burnAt + 'Z').getTime() - Date.now();
+    if (remaining <= 0) return { value: '', unit: 'minute', isPast: true };
+    // Return blank value — the UI will show a notice about the existing deadline
+    return { value: '', unit: 'hour', isPast: false };
 }
 
 interface Attachment {
@@ -71,7 +77,15 @@ export function EditPaste() {
     const [language, setLanguage] = useState('plaintext');
 
     const [isPinned, setIsPinned] = useState(false);
-    const [expiresIn, setExpiresIn] = useState('never');
+    const [burnTrigger, setBurnTrigger] = useState('off');
+    const [burnValue, setBurnValue] = useState('');
+    const [burnUnit, setBurnUnit] = useState<BurnUnit>('hour');
+    const [burnUnlocks, setBurnUnlocks] = useState('1');
+    const [burnAction, setBurnAction] = useState<BurnAction>('delete');
+    const [burnTimeWarning, setBurnTimeWarning] = useState<string | null>(null);
+    // Tracks the action that was loaded from the server so we can detect
+    // whether the user changed it while leaving burnValue blank.
+    const [originalBurnAction, setOriginalBurnAction] = useState<BurnAction>('delete');
 
     // Attachments state
     const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -121,7 +135,30 @@ export function EditPaste() {
             setLanguage(p.language || 'plaintext');
 
             setIsPinned(p.pinned === 1);
-            setExpiresIn(p.expires_at ? '__current__' : 'never');
+            setBurnTrigger(p.burn_trigger || 'off');
+            const resolvedAction: BurnAction =
+                (p.burn_action as BurnAction) ||
+                (p.burn_trigger === 'unlock_count' ? 'revoke_share' : 'delete');
+            setBurnAction(resolvedAction);
+            setOriginalBurnAction(resolvedAction);
+            const burnTime = inferBurnTimeFields(p.burn_at);
+            setBurnValue(burnTime.value);
+            setBurnUnit(burnTime.unit);
+            setBurnUnlocks(String(p.burn_after_unlocks || 1));
+            
+            if (p.burn_trigger === 'time' && p.burn_at) {
+                const remaining = new Date(p.burn_at + 'Z').getTime() - Date.now();
+                if (remaining > 0) {
+                    const d = new Date(p.burn_at + 'Z');
+                    setBurnTimeWarning(
+                        `This paste already burns at ${d.toLocaleString()}. Changing the burn value below will set a new deadline from now.`
+                    );
+                } else {
+                    setBurnTimeWarning(null);
+                }
+            } else {
+                setBurnTimeWarning(null);
+            }
             
             const existingFiles = result.files;
             if (existingFiles && existingFiles.length > 0) {
@@ -160,6 +197,23 @@ export function EditPaste() {
             return;
         }
 
+        // If the trigger is 'time' but burnValue is blank, the user hasn't changed
+        // the existing deadline (inferBurnTimeFields returns '' intentionally).
+        // Skip validation and don't send burn fields so the backend preserves the
+        // existing burn_at unchanged.
+        // If the user changed the burn action while leaving burnValue blank we must
+        // NOT silently drop the action change — turn off keepExistingTimeBurn so
+        // validation fires and asks the user to re-enter the time.
+        const keepExistingTimeBurn =
+            burnTrigger === 'time' && burnValue === '' && burnAction === originalBurnAction;
+        if (!keepExistingTimeBurn) {
+            const burnError = validateBurnRule(burnTrigger, burnValue, burnUnit, burnUnlocks);
+            if (burnError) {
+                toast.error(burnError);
+                return;
+            }
+        }
+
         setSaving(true);
         try {
             if (!pasteKey) throw new Error("Encryption key missing");
@@ -177,12 +231,25 @@ export function EditPaste() {
             const encTitle = title.trim() ? await encryptText(pasteKey, title.trim()) : '';
             const encContent = content ? await encryptText(pasteKey, content) : '';
 
+            // Build burn fields: omit them entirely when the user left an existing
+            // time-based deadline unchanged (blank burnValue) so the backend
+            // treats it as "no change" and keeps the current burn_at.
+            const burnFields = keepExistingTimeBurn
+                ? {}
+                : {
+                    burn_trigger: burnTrigger === 'off' ? null : burnTrigger as 'time' | 'unlock_count',
+                    burn_action: burnAction,
+                    burn_after_value: burnTrigger === 'time' ? Number(burnValue) : undefined,
+                    burn_after_unit: burnTrigger === 'time' ? burnUnit : undefined,
+                    burn_after_unlocks: burnTrigger === 'unlock_count' ? Number(burnUnlocks) : undefined,
+                };
+
             await api.paste.update(slug!, {
                 title: encTitle,
                 content: encContent,
                 language,
                 pinned: isPinned ? 1 : 0,
-                expires_in: expiresIn === '__current__' ? undefined : expiresIn,
+                ...burnFields,
                 new_file_slugs,
                 removed_file_slugs: removedSlugs,
             });
@@ -457,9 +524,9 @@ export function EditPaste() {
                         )}
                         </div>
 
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 px-4 sm:px-6 bg-muted/10 border-t border-border/40 rounded-b-xl">
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 py-4 px-4 sm:px-6 bg-muted/10 border-t border-border/40 rounded-b-xl">
                             {/* Left group */}
-                            <div className="flex items-center justify-center md:justify-start gap-4 md:gap-6 w-full md:w-auto order-1 md:order-none">
+                            <div className="flex flex-row flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 md:gap-6 w-full md:w-auto order-1 md:order-none">
                                 <div className="flex items-center gap-2">
                                     <Label
                                         htmlFor="pin-toggle"
@@ -477,26 +544,25 @@ export function EditPaste() {
                                         id="pin-toggle"
                                     />
                                 </div>
-                                <div className="h-3 w-px bg-border/60 hidden md:block" />
-                                <div className="flex items-center gap-2 md:gap-3">
-                                    <HourglassIcon size={14} className="text-muted-foreground shrink-0" />
-                                    <span className="text-sm text-muted-foreground md:hidden">Expires in</span>
-                                    <Select value={expiresIn} onValueChange={setExpiresIn}>
-                                        <SelectTrigger className="w-[140px] md:w-[130px] h-9 text-sm bg-background border-border/60 focus:ring-1 focus:ring-primary/20 px-3 shadow-sm">
-                                            <SelectValue placeholder="Expires" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="__current__">
-                                                Keep current
-                                            </SelectItem>
-                                            {EXPIRATION_OPTIONS.map((opt) => (
-                                                <SelectItem key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <div className="h-3 w-px bg-border/60 hidden sm:block" />
+                                <BurnRulesControl
+                                    burnTrigger={burnTrigger}
+                                    setBurnTrigger={(v) => { setBurnTrigger(v); setBurnTimeWarning(null); }}
+                                    burnValue={burnValue}
+                                    setBurnValue={setBurnValue}
+                                    burnUnit={burnUnit}
+                                    setBurnUnit={setBurnUnit}
+                                    burnUnlocks={burnUnlocks}
+                                    setBurnUnlocks={setBurnUnlocks}
+                                    burnAction={burnAction}
+                                    setBurnAction={setBurnAction}
+                                    isShared={!!paste?.share_wrapped_paste_key}
+                                />
+                                {burnTimeWarning && (
+                                    <p className="text-xs text-amber-500 max-w-xs mt-2 md:mt-0">
+                                        ⚠️ {burnTimeWarning}
+                                    </p>
+                                )}
                             </div>
 
                             {/* Right group */}

@@ -9,7 +9,12 @@ export interface Paste {
   content: string;
   language: string;
   pinned: number;
-  expires_at: string | null;
+  burn_trigger: 'time' | 'unlock_count' | null;
+  burn_action: 'revoke_share' | 'delete';
+  burn_at: string | null;
+  burn_after_unlocks: number | null;
+  burn_unlocks_used: number;
+  burn_pending_delete_at: string | null;
   created_at: string;
   updated_at: string;
 
@@ -107,7 +112,11 @@ export const api = {
       content: string;
       language?: string;
       pinned?: number;
-      expires_in?: string;
+      burn_trigger?: 'time' | 'unlock_count' | null;
+      burn_action?: 'revoke_share' | 'delete';
+      burn_after_value?: number;
+      burn_after_unit?: 'minute' | 'hour' | 'day';
+      burn_after_unlocks?: number;
       file_slugs?: string[];
       encrypted_paste_key?: string;
     }) =>
@@ -123,7 +132,11 @@ export const api = {
         content?: string;
         language?: string;
         pinned?: number;
-        expires_in?: string;
+        burn_trigger?: 'time' | 'unlock_count' | null;
+      burn_action?: 'revoke_share' | 'delete';
+      burn_after_value?: number;
+      burn_after_unit?: 'minute' | 'hour' | 'day';
+      burn_after_unlocks?: number;
         new_file_slugs?: string[];
         removed_file_slugs?: string[];
         encrypted_paste_key?: string;
@@ -166,7 +179,7 @@ export const api = {
     revoke: (slug: string) =>
       request<{ success: boolean }>(`/paste/${slug}`, {
         method: "PUT",
-        body: JSON.stringify({ share_wrapped_paste_key: "__revoke__" }),
+        body: JSON.stringify({ revoke_share: true }),
       }),
 
     /**

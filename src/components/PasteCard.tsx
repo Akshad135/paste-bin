@@ -5,7 +5,7 @@ import { unwrapPasteKey, decryptText } from '@/lib/crypto';
 import { CodePreview } from '@/components/CodePreview';
 import type { Paste } from '@/lib/api';
 import { api } from '@/lib/api';
-import { getLanguageLabel, timeAgo, isExpired } from '@/lib/constants';
+import { burnStatusLabel, getLanguageLabel, timeAgo } from '@/lib/constants';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -38,7 +38,6 @@ import { PinIcon } from '@/components/ui/animated-pin';
 import { HourglassIcon } from '@/components/ui/animated-hourglass';
 import { ShareIcon } from '@/components/ui/animated-share';
 import { LockIcon } from '@/components/ui/animated-lock';
-import { ExpirationTimer } from '@/components/ExpirationTimer';
 import { toast } from 'sonner';
 
 interface PasteCardProps {
@@ -56,6 +55,10 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
     const [decryptedContent, setDecryptedContent] = useState('');
     const [shareDialogOpen, setShareDialogOpen] = useState(false);
     const [localSharedKey, setLocalSharedKey] = useState<string | null | undefined>(paste.share_wrapped_paste_key);
+
+    useEffect(() => {
+        setLocalSharedKey(paste.share_wrapped_paste_key);
+    }, [paste.share_wrapped_paste_key]);
 
     useEffect(() => {
         let cancelled = false;
@@ -143,6 +146,7 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
 
     const rawContent = decryptedContent.slice(0, 500);
     const hasFiles = paste.file_count !== undefined && paste.file_count > 0;
+    const burnLabel = burnStatusLabel(paste, true);
 
     return (
         <>
@@ -239,18 +243,15 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
 
                     {/* Footer */}
                     <div className="flex items-center justify-between text-[11px] text-muted-foreground mt-auto">
-                        <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                            <span className="flex items-center gap-1 shrink-0">
                                 <ClockIcon size={12} className="text-primary/60" />
                                 {timeAgo(paste.created_at)}
                             </span>
-                            {paste.expires_at && !isExpired(paste.expires_at) && (
-                                <span className="flex items-center gap-1 text-amber-500">
+                            {burnLabel && (
+                                <span className="flex items-center gap-1 text-amber-500 truncate">
                                     <HourglassIcon size={12} />
-                                    <ExpirationTimer
-                                        expiresAt={paste.expires_at}
-                                        onExpire={() => onDelete?.(paste.slug)}
-                                    />
+                                    {burnLabel}
                                 </span>
                             )}
                         </div>
@@ -293,6 +294,7 @@ export function PasteCard({ paste, isAuthenticated = false, onPinChange, onDelet
                 onOpenChange={setShareDialogOpen}
                 pasteSlug={paste.slug}
                 encryptedPasteKey={paste.encrypted_paste_key || ''}
+                burnAction={paste.burn_action}
                 onSuccess={(sharedKey) => setLocalSharedKey(sharedKey)}
             />
         </>

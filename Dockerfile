@@ -6,7 +6,8 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci || npm install
 
 # Copy source code and build
 COPY . .
@@ -27,7 +28,9 @@ COPY src-rust ./src-rust
 COPY schema.sql ./
 
 # Build release binary
-RUN cargo build --release
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/app/target \
+    cargo build --release
 
 # ==============================================================================
 # Stage 3: Final runtime image

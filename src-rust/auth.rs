@@ -2,6 +2,7 @@ use axum::http::{HeaderMap, HeaderValue};
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use sha2::{Digest, Sha256};
+use subtle::ConstantTimeEq;
 
 const COOKIE_NAME: &str = "ghostbin_auth";
 const COOKIE_MAX_AGE: u64 = 60 * 60 * 24 * 30; // 30 days
@@ -42,9 +43,16 @@ pub fn is_authenticated(headers: &HeaderMap, auth_key: &str) -> bool {
     let cookies = parse_cookies(cookie_header);
     let expected = create_token(auth_key);
 
-    cookies
-        .iter()
-        .any(|(name, value)| name == COOKIE_NAME && value == &expected)
+    // Use constant-time comparison to prevent timing side-channel attacks.
+    // A naive `==` leaks information about how many bytes match, which can
+    // allow an attacker to reconstruct the token byte-by-byte.
+    cookies.iter().any(|(name, value)| {
+        name == COOKIE_NAME
+            && value
+                .as_bytes()
+                .ct_eq(expected.as_bytes())
+                .into()
+    })
 }
 
 /// Create a Set-Cookie header value for successful login.
