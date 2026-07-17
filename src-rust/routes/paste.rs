@@ -126,10 +126,21 @@ fn json_error(status: StatusCode, msg: &str) -> impl IntoResponse {
     (status, Json(serde_json::json!({ "error": msg })))
 }
 
-fn visible_paste_clause() -> String {
+/// Returns the standard "paste is visible" WHERE clause.
+/// `prefix` is prepended to every column name — use `"p."` when the
+/// pastes table is aliased in a JOIN, or `""` for simple queries.
+fn visible_paste_clause_for(prefix: &str) -> String {
     format!(
-        "{ACTIVE_PASTE_CLAUSE} AND NOT (burn_trigger = 'time' AND burn_action = 'delete' AND burn_at IS NOT NULL AND burn_at <= datetime('now'))"
+        "{prefix}burn_pending_delete_at IS NULL \
+         AND NOT ({prefix}burn_trigger = 'time' \
+                  AND {prefix}burn_action = 'delete' \
+                  AND {prefix}burn_at IS NOT NULL \
+                  AND {prefix}burn_at <= datetime('now'))"
     )
+}
+
+fn visible_paste_clause() -> String {
+    visible_paste_clause_for("")
 }
 
 fn default_action_for_trigger(
@@ -272,23 +283,23 @@ pub async fn handle_list(
     let page = params.page.unwrap_or(1).max(1);
     let limit = params.limit.unwrap_or(20).min(50);
     let offset = (page - 1) * limit;
-    let clause = visible_paste_clause();
+    let filter = visible_paste_clause_for("p.");
 
     // Single query with LEFT JOIN replaces the previous N+1 per-paste COUNT loop.
-    let query =
+    let query = format!(
         "SELECT p.id, p.slug, p.title, p.content, p.language, p.pinned,
             p.burn_trigger, p.burn_action, p.burn_at, p.burn_after_unlocks, p.burn_unlocks_used, p.burn_pending_delete_at,
             p.created_at, p.updated_at, p.encrypted_paste_key, p.share_wrapped_paste_key,
             COUNT(f.id) AS file_count
          FROM pastes p
          LEFT JOIN files f ON f.paste_slug = p.slug
-         WHERE p.burn_pending_delete_at IS NULL
-           AND NOT (p.burn_trigger = 'time' AND p.burn_action = 'delete' AND p.burn_at IS NOT NULL AND p.burn_at <= datetime('now'))
+         WHERE {filter}
          GROUP BY p.id
          ORDER BY p.pinned DESC, p.created_at DESC
-         LIMIT ? OFFSET ?";
+         LIMIT ? OFFSET ?"
+    );
 
-    let pastes: Vec<PasteListItem> = match sqlx::query_as(query)
+    let pastes: Vec<PasteListItem> = match sqlx::query_as(&query)
         .bind(limit)
         .bind(offset)
         .fetch_all(&state.db)

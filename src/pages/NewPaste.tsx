@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useOffline } from '@/lib/offlineContext';
 import { api } from '@/lib/api';
 import { generatePasteKey, encryptText, encryptBytes, wrapPasteKey } from '@/lib/crypto';
-import { LANGUAGES, validateBurnRule, type BurnAction, type BurnUnit } from '@/lib/constants';
+import { LANGUAGES, validateBurnRule, type BurnUnit } from '@/lib/constants';
 import { config } from '@/lib/config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,7 +59,6 @@ export function NewPaste() {
     const [burnTrigger, setBurnTrigger] = useState('off');
     const [burnValue, setBurnValue] = useState('');
     const [burnUnit, setBurnUnit] = useState<BurnUnit>('hour');
-    const [burnAction, setBurnAction] = useState<BurnAction>('delete');
     const [loading, setLoading] = useState(false);
 
     // File attachments state
@@ -126,7 +125,6 @@ export function NewPaste() {
                 language,
                 pinned: isPinned ? 1 : 0,
                 burn_trigger: burnTrigger === 'off' ? null : burnTrigger as 'time',
-                burn_action: 'delete',
                 burn_after_value: burnTrigger === 'time' ? Number(burnValue) : undefined,
                 burn_after_unit: burnTrigger === 'time' ? burnUnit : undefined,
                 file_slugs: validSlugs,
@@ -383,8 +381,8 @@ export function NewPaste() {
                                     setBurnUnit={setBurnUnit}
                                     burnUnlocks="1"
                                     setBurnUnlocks={() => {}}
-                                    burnAction={burnAction}
-                                    setBurnAction={setBurnAction}
+                                    burnAction="delete"
+                                    setBurnAction={() => {}}
                                 />
                             </div>
 
