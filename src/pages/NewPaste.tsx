@@ -124,7 +124,7 @@ export function NewPaste() {
                 content: encContent,
                 language,
                 pinned: isPinned ? 1 : 0,
-                burn_trigger: burnTrigger === 'off' ? null : burnTrigger as 'time',
+                burn_trigger: burnTrigger === 'time' ? 'time' : null,
                 burn_after_value: burnTrigger === 'time' ? Number(burnValue) : undefined,
                 burn_after_unit: burnTrigger === 'time' ? burnUnit : undefined,
                 file_slugs: validSlugs,

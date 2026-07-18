@@ -338,7 +338,11 @@ export function ViewPaste() {
         const win = window.open('', '_blank');
         if (win) {
             win.document.title = paste.title || 'Raw Paste';
-            win.document.write(`<pre style="word-wrap: break-word; white-space: pre-wrap;">${paste.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`);
+            const pre = win.document.createElement('pre');
+            pre.style.wordWrap = 'break-word';
+            pre.style.whiteSpace = 'pre-wrap';
+            pre.textContent = paste.content;
+            win.document.body.appendChild(pre);
             win.document.close();
         }
     };
