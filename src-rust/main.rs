@@ -308,13 +308,10 @@ fn build_cors_layer(allowed_origins: &str) -> CorsLayer {
         Err(_) => {
             tracing::error!(
                 "ALLOWED_ORIGINS value '{}' is not a valid HTTP origin. \
-                 Falling back to open CORS (*).",
+                 Falling back to restrictive CORS (no allowed origins).",
                 trimmed
             );
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(Any)
+            CorsLayer::new().allow_methods(Any).allow_headers(Any)
         }
     }
 }
