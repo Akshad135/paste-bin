@@ -51,8 +51,108 @@ export const LANGUAGES = [
     { value: 'proto', label: 'Protobuf' },
 ];
 
+
+export const LANG_MAP: Record<string, string> = {
+    plaintext: 'text',
+    shellscript: 'shellscript',
+    cpp: 'cpp',
+    csharp: 'csharp',
+    dockerfile: 'dockerfile',
+    makefile: 'makefile',
+    proto: 'protobuf',
+    terraform: 'hcl',
+    jsx: 'jsx',
+    tsx: 'tsx',
+    vue: 'vue',
+    svelte: 'svelte',
+    astro: 'astro',
+    nginx: 'nginx',
+};
+
 export function getLanguageLabel(value: string): string {
     return LANGUAGES.find((l) => l.value === value)?.label || value;
+}
+
+// ─── Burn Rules ─────────────────────────────────────────────────────────────
+
+export type BurnAction = 'revoke_share' | 'delete';
+export type BurnUnit = 'minute' | 'hour' | 'day';
+
+export const BURN_TRIGGER_OPTIONS = [
+    { value: 'off', label: 'Off' },
+    { value: 'time', label: 'After time' },
+    { value: 'unlock_count', label: 'After unlocks' },
+];
+
+export const BURN_UNIT_OPTIONS = [
+    { value: 'minute', label: 'Minutes' },
+    { value: 'hour', label: 'Hours' },
+    { value: 'day', label: 'Days' },
+];
+
+export const BURN_ACTION_OPTIONS = [
+    { value: 'delete', label: 'Delete paste' },
+    { value: 'revoke_share', label: 'Revoke share access' },
+];
+
+/**
+ * Client-side validation for burn rule fields.
+ * Returns an error string if invalid, or null if valid.
+ */
+export function validateBurnRule(
+    trigger: string,
+    value: string,
+    unit: BurnUnit,
+    unlocks: string,
+): string | null {
+    if (trigger === 'time') {
+        const num = Number(value);
+        if (!value || isNaN(num) || num <= 0 || !Number.isInteger(num)) {
+            return 'Please enter a valid burn duration (whole number).';
+        }
+        const multiplier = unit === 'minute' ? 60 : unit === 'hour' ? 3600 : 86400;
+        const secs = num * multiplier;
+        if (secs < 60) return 'Burn time must be at least 1 minute.';
+        if (secs > 30 * 24 * 3600) return 'Burn time cannot exceed 30 days.';
+    }
+    if (trigger === 'unlock_count') {
+        const num = Number(unlocks);
+        if (!unlocks || isNaN(num) || num <= 0 || !Number.isInteger(num)) {
+            return 'Please enter a valid unlock count (whole number).';
+        }
+        if (num > 100_000) return 'Unlock count cannot exceed 100,000.';
+    }
+    return null;
+}
+
+/**
+ * Returns a compact human-readable label for a paste's active burn rule.
+ * Returns empty string when no burn rule is set.
+ */
+export function burnStatusLabel(
+    paste: {
+        burn_trigger: string | null;
+        burn_action: string;
+        burn_at: string | null;
+        burn_after_unlocks: number | null;
+        burn_unlocks_used: number;
+    },
+    compact = false,
+): string {
+    if (!paste.burn_trigger) return '';
+    const action = paste.burn_action === 'revoke_share' ? 'Revoke' : 'Delete';
+    if (paste.burn_trigger === 'time' && paste.burn_at) {
+        const remaining = new Date(paste.burn_at + 'Z').getTime() - Date.now();
+        if (remaining <= 0) return `${action} (burned)`;
+        const label = timeUntil(paste.burn_at);
+        return compact ? `${action} in ${label}` : `${action} after ${label}`;
+    }
+    if (paste.burn_trigger === 'unlock_count' && paste.burn_after_unlocks != null) {
+        const left = paste.burn_after_unlocks - paste.burn_unlocks_used;
+        const safe = Math.max(0, left);
+        return `${action} after ${safe} more unlock${safe === 1 ? '' : 's'}`;
+    }
+    return '';
 }
 
 export function timeAgo(dateString: string): string {
@@ -68,28 +168,16 @@ export function timeAgo(dateString: string): string {
     return `${Math.floor(seconds / 31536000)}y ago`;
 }
 
-// Expiration options for time-based pastes
-export const EXPIRATION_OPTIONS = [
-    { value: 'never', label: 'Never' },
-    { value: '10m', label: '10 minutes' },
-    { value: '45m', label: '45 minutes' },
-    { value: '2h', label: '2 hours' },
-    { value: '1d', label: '1 day' },
-    { value: '1w', label: '1 week' },
-];
+// ─── Time helpers ────────────────────────────────────────────────────────────
 
-export function isExpired(expiresAt: string | null): boolean {
-    if (!expiresAt) return false;
-    return new Date(expiresAt + 'Z') <= new Date();
-}
-
-export function timeUntilExpiry(expiresAt: string | null): string {
-    if (!expiresAt) return '';
-    const expiry = new Date(expiresAt + 'Z');
+/** Returns the time remaining until a UTC timestamp string, e.g. "3h left". */
+export function timeUntil(utcDateString: string | null): string {
+    if (!utcDateString) return '';
+    const target = new Date(utcDateString + 'Z');
     const now = new Date();
-    const seconds = Math.floor((expiry.getTime() - now.getTime()) / 1000);
+    const seconds = Math.floor((target.getTime() - now.getTime()) / 1000);
 
-    if (seconds <= 0) return 'Expired';
+    if (seconds <= 0) return 'soon';
     if (seconds < 60) return `${seconds}s left`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m left`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h left`;

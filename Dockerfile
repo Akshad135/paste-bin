@@ -6,7 +6,9 @@ WORKDIR /app
 
 # Install dependencies
 COPY package.json package-lock.json* ./
-RUN npm ci || npm install
+ARG TARGETPLATFORM
+RUN --mount=type=cache,target=/root/.npm,id=npm-${TARGETPLATFORM} \
+    npm ci || npm install
 
 # Copy source code and build
 COPY . .
@@ -27,7 +29,11 @@ COPY src-rust ./src-rust
 COPY schema.sql ./
 
 # Build release binary
-RUN cargo build --release
+ARG TARGETPLATFORM
+RUN --mount=type=cache,target=/usr/local/cargo/registry,id=cargo-registry-${TARGETPLATFORM} \
+    --mount=type=cache,target=/app/target,id=cargo-target-${TARGETPLATFORM} \
+    cargo build --release && \
+    cp /app/target/release/ghostbin-server /app/ghostbin-server_built
 
 # ==============================================================================
 # Stage 3: Final runtime image
@@ -41,7 +47,7 @@ RUN apk add --no-cache sqlite-libs libgcc
 RUN mkdir -p /app/data && chown -R 1000:1000 /app/data
 
 # Copy the built backend binary
-COPY --from=backend-builder /app/target/release/ghostbin-server /app/ghostbin-server
+COPY --from=backend-builder /app/ghostbin-server_built /app/ghostbin-server
 
 # Copy the built frontend static files
 COPY --from=frontend-builder /app/dist /app/dist

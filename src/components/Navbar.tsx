@@ -322,18 +322,10 @@ function ThemeModal({ open, onOpenChange }: { open: boolean, onOpenChange: (open
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setActiveIndex(prev => {
-                    const next = (prev + 1) % ALL_THEMES.length;
-                    applyTheme(next);
-                    return next;
-                });
+                setActiveIndex(prev => (prev + 1) % ALL_THEMES.length);
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setActiveIndex(prev => {
-                    const next = (prev - 1 + ALL_THEMES.length) % ALL_THEMES.length;
-                    applyTheme(next);
-                    return next;
-                });
+                setActiveIndex(prev => (prev - 1 + ALL_THEMES.length) % ALL_THEMES.length);
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 onOpenChange(false);
@@ -342,6 +334,11 @@ function ThemeModal({ open, onOpenChange }: { open: boolean, onOpenChange: (open
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        applyTheme(activeIndex);
+    }, [activeIndex, open]);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

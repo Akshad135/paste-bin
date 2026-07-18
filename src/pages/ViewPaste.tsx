@@ -8,8 +8,8 @@ import { SharePasteDialog } from '@/components/SharePasteDialog';
 import { LockIcon } from '@/components/ui/animated-lock';
 import { useOffline } from '@/lib/offlineContext';
 import { useTheme } from '@/components/ThemeProvider';
-import { getLanguageLabel, timeAgo, isExpired } from '@/lib/constants';
-import { cn, truncateFileName } from '@/lib/utils';
+import { getLanguageLabel, timeAgo, LANG_MAP, burnStatusLabel } from '@/lib/constants';
+import { cn, truncateFileName, formatFileSize } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,7 +27,6 @@ import { InputOTP, InputOTPGroup, InputOTPSeparator, InputOTPSlot } from '@/comp
 import { HourglassIcon } from '@/components/ui/animated-hourglass';
 import { DeleteIcon } from '@/components/ui/animated-delete';
 import { ErrorState } from '@/components/ErrorState';
-import { ExpirationTimer } from '@/components/ExpirationTimer';
 import {
     Dialog,
     DialogContent,
@@ -38,31 +37,6 @@ import {
     DialogClose,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-
-// Map language values to shiki identifiers
-const LANG_MAP: Record<string, string> = {
-    plaintext: 'text',
-    shellscript: 'shellscript',
-    cpp: 'cpp',
-    csharp: 'csharp',
-    dockerfile: 'dockerfile',
-    makefile: 'makefile',
-    proto: 'protobuf',
-    terraform: 'hcl',
-    jsx: 'jsx',
-    tsx: 'tsx',
-    vue: 'vue',
-    svelte: 'svelte',
-    astro: 'astro',
-    nginx: 'nginx',
-};
-
-function formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
 
 function isImageMime(mime: string | null): boolean {
     return !!mime && mime.startsWith('image/');
@@ -83,6 +57,13 @@ export function ViewPaste() {
     const [loadTrigger, setLoadTrigger] = useState(0);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [imageUrls, setImageUrls] = useState<Record<string, string>>({});
+    const createdBlobs = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        return () => {
+            createdBlobs.current.forEach(url => URL.revokeObjectURL(url));
+        };
+    }, []);
     
     // Guest unlock state
     const [guestPassword, setGuestPassword] = useState('');
@@ -212,7 +193,9 @@ export function ViewPaste() {
                 const decBuf = await decryptBytes(pasteKeyRef.current!, encBuf);
                 const blob = new Blob([decBuf], { type: file.mime_type });
                 if (!cancelled) {
-                    setImageUrls(prev => ({ ...prev, [file.slug]: URL.createObjectURL(blob) }));
+                    const url = URL.createObjectURL(blob);
+                    createdBlobs.current.add(url);
+                    setImageUrls(prev => ({ ...prev, [file.slug]: url }));
                 }
             } catch (e) {
                 console.error("Failed to decrypt image preview", e);
@@ -352,9 +335,12 @@ export function ViewPaste() {
 
     const viewRaw = () => {
         if (!paste) return;
-        const blob = new Blob([paste.content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.title = paste.title || 'Raw Paste';
+            win.document.write(`<pre style="word-wrap: break-word; white-space: pre-wrap;">${paste.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`);
+            win.document.close();
+        }
     };
 
     const togglePin = async () => {
@@ -503,18 +489,15 @@ export function ViewPaste() {
                             <PinIcon size={12} className="rotate-45" /> Pinned
                         </Badge>
                     )}
-                    {paste.expires_at && !isExpired(paste.expires_at) && (
-                        <Badge variant="outline" className="text-[11px] px-2 py-0.5 border-amber-500/50 text-amber-500 bg-amber-500/5 gap-1">
-                            <HourglassIcon size={12} />
-                            <ExpirationTimer
-                                expiresAt={paste.expires_at}
-                                onExpire={() => {
-                                    toast.error('Paste expired');
-                                    navigate('/');
-                                }}
-                            />
-                        </Badge>
-                    )}
+                    {paste.burn_trigger && (() => {
+                        const label = burnStatusLabel(paste);
+                        return label ? (
+                            <Badge variant="outline" className="text-[11px] px-2 py-0.5 border-amber-500/50 text-amber-500 bg-amber-500/5 gap-1">
+                                <HourglassIcon size={12} />
+                                {label}
+                            </Badge>
+                        ) : null;
+                    })()}
                     <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <ClockIcon size={12} />
                         {timeAgo(paste.created_at)}
@@ -636,18 +619,15 @@ export function ViewPaste() {
                         <ShareIcon size={10} /> Shared
                     </Badge>
                 )}
-                {paste.expires_at && !isExpired(paste.expires_at) && (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-500 bg-amber-500/5 gap-1">
-                        <HourglassIcon size={10} />
-                        <ExpirationTimer
-                            expiresAt={paste.expires_at}
-                            onExpire={() => {
-                                toast.error('Paste expired');
-                                navigate('/');
-                            }}
-                        />
-                    </Badge>
-                )}
+                {paste.burn_trigger && (() => {
+                    const label = burnStatusLabel(paste);
+                    return label ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-amber-500/50 text-amber-500 bg-amber-500/5 gap-1">
+                            <HourglassIcon size={10} />
+                            {label}
+                        </Badge>
+                    ) : null;
+                })()}
                 <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                     <ClockIcon size={10} />
                     {timeAgo(paste.created_at)}

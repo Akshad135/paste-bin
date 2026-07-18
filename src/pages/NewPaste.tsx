@@ -4,7 +4,7 @@ import { useAuth } from '@/lib/auth';
 import { useOffline } from '@/lib/offlineContext';
 import { api } from '@/lib/api';
 import { generatePasteKey, encryptText, encryptBytes, wrapPasteKey } from '@/lib/crypto';
-import { LANGUAGES, EXPIRATION_OPTIONS } from '@/lib/constants';
+import { LANGUAGES, validateBurnRule, type BurnUnit } from '@/lib/constants';
 import { config } from '@/lib/config';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,26 +16,19 @@ import { Switch } from '@/components/ui/switch';
 import { ArrowLeftIcon } from '@/components/ui/animated-arrow-left';
 
 import { LoaderPinwheelIcon } from '@/components/ui/animated-loader-pinwheel';
-import { HourglassIcon } from '@/components/ui/animated-hourglass';
 import { PinIcon } from '@/components/ui/animated-pin';
 import { UploadIcon } from '@/components/ui/animated-upload';
 import { DeleteIcon } from '@/components/ui/animated-delete';
 import { FileTextIcon } from '@/components/ui/animated-file-text';
+import { BurnRulesControl } from '@/components/BurnRulesControl';
 import {
     Dialog,
     DialogContent,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { cn, truncateFileName } from '@/lib/utils';
+import { cn, truncateFileName, formatFileSize } from '@/lib/utils';
 import { toast } from 'sonner';
-
-function formatFileSize(bytes: number): string {
-    if (bytes === 0) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0)} ${units[i]}`;
-}
 
 interface Attachment {
     slug?: string;
@@ -63,7 +56,9 @@ export function NewPaste() {
     const [language, setLanguage] = useState('plaintext');
 
     const [isPinned, setIsPinned] = useState(false);
-    const [expiresIn, setExpiresIn] = useState('never');
+    const [burnTrigger, setBurnTrigger] = useState('off');
+    const [burnValue, setBurnValue] = useState('');
+    const [burnUnit, setBurnUnit] = useState<BurnUnit>('hour');
     const [loading, setLoading] = useState(false);
 
     // File attachments state
@@ -72,11 +67,13 @@ export function NewPaste() {
     const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    if (authLoading) return null;
-    if (!isAuthenticated) {
-        navigate('/');
-        return null;
-    }
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            navigate('/');
+        }
+    }, [isAuthenticated, authLoading, navigate]);
+
+    if (authLoading || !isAuthenticated) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -94,6 +91,12 @@ export function NewPaste() {
 
         if (!content.trim() && attachments.length === 0) {
             toast.error('Please provide some content or attach a file');
+            return;
+        }
+
+        const burnError = validateBurnRule(burnTrigger, burnValue, burnUnit, '1');
+        if (burnError) {
+            toast.error(burnError);
             return;
         }
 
@@ -121,7 +124,9 @@ export function NewPaste() {
                 content: encContent,
                 language,
                 pinned: isPinned ? 1 : 0,
-                expires_in: expiresIn === 'never' ? undefined : expiresIn,
+                burn_trigger: burnTrigger === 'off' ? null : burnTrigger as 'time',
+                burn_after_value: burnTrigger === 'time' ? Number(burnValue) : undefined,
+                burn_after_unit: burnTrigger === 'time' ? burnUnit : undefined,
                 file_slugs: validSlugs,
                 encrypted_paste_key: wrappedKey,
             });
@@ -345,9 +350,9 @@ export function NewPaste() {
                         </div>
 
                         {/* Bottom action bar */}
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4 py-4 px-4 sm:px-6 bg-muted/10 border-t border-border/40 rounded-b-xl">
+                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 py-4 px-4 sm:px-6 bg-muted/10 border-t border-border/40 rounded-b-xl">
                             {/* Left group */}
-                            <div className="flex items-center justify-center md:justify-start gap-4 md:gap-6 w-full md:w-auto order-1 md:order-none">
+                            <div className="flex flex-row flex-wrap items-center justify-center md:justify-start gap-3 sm:gap-4 md:gap-6 w-full md:w-auto order-1 md:order-none">
                                 <div className="flex items-center gap-2">
                                     <Label
                                         htmlFor="pin-toggle"
@@ -366,23 +371,19 @@ export function NewPaste() {
                                         className="scale-90 md:scale-75 md:origin-right"
                                     />
                                 </div>
-                                <div className="h-3 w-px bg-border/60 hidden md:block" />
-                                <div className="flex items-center gap-2 md:gap-3">
-                                    <HourglassIcon size={14} className="text-muted-foreground shrink-0" />
-                                    <span className="text-sm text-muted-foreground md:hidden">Expires in</span>
-                                    <Select value={expiresIn} onValueChange={setExpiresIn}>
-                                        <SelectTrigger className="w-[140px] md:w-[130px] h-9 text-sm bg-background border-border/60 focus:ring-1 focus:ring-primary/20 px-3 shadow-sm">
-                                            <SelectValue placeholder="Expires" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {EXPIRATION_OPTIONS.map((opt) => (
-                                                <SelectItem key={opt.value} value={opt.value}>
-                                                    {opt.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
+                                <div className="h-3 w-px bg-border/60 hidden sm:block" />
+                                <BurnRulesControl
+                                    burnTrigger={burnTrigger}
+                                    setBurnTrigger={setBurnTrigger}
+                                    burnValue={burnValue}
+                                    setBurnValue={setBurnValue}
+                                    burnUnit={burnUnit}
+                                    setBurnUnit={setBurnUnit}
+                                    burnUnlocks="1"
+                                    setBurnUnlocks={() => {}}
+                                    burnAction="delete"
+                                    setBurnAction={() => {}}
+                                />
                             </div>
 
                             {/* Right group */}

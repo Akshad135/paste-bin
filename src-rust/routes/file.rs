@@ -94,12 +94,11 @@ pub async fn handle_upload(
     // Generate a unique slug for this file
     let mut slug = generate_slug();
     for _ in 0..5 {
-        let exists: Option<(i64,)> =
-            sqlx::query_as("SELECT id FROM files WHERE slug = ?")
-                .bind(&slug)
-                .fetch_optional(&state.db)
-                .await
-                .unwrap_or(None);
+        let exists: Option<(i64,)> = sqlx::query_as("SELECT id FROM files WHERE slug = ?")
+            .bind(&slug)
+            .fetch_optional(&state.db)
+            .await
+            .unwrap_or(None);
         if exists.is_none() {
             break;
         }
@@ -143,8 +142,11 @@ pub async fn handle_upload(
         Err(e) => {
             let _ = tokio::fs::remove_file(&file_path).await;
             tracing::error!("Failed to insert file record: {e}");
-            json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to save file record")
-                .into_response()
+            json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Failed to save file record",
+            )
+            .into_response()
         }
     }
 }
@@ -197,7 +199,6 @@ pub async fn handle_download(
     headers: HeaderMap,
     Path(slug): Path<String>,
 ) -> impl IntoResponse {
-    // Look up the file
     let file: Option<FileEntry> = sqlx::query_as("SELECT * FROM files WHERE slug = ?")
         .bind(&slug)
         .fetch_optional(&state.db)
@@ -208,47 +209,101 @@ pub async fn handle_download(
         return json_error(StatusCode::NOT_FOUND, "File not found").into_response();
     };
 
-    // Access control, mirroring the paste access rules in `paste::handle_get`:
-    // - Authenticated (owner) requests can always download.
-    // - Unauthenticated requests are only allowed if the file is linked to a
-    //   paste that has an active new-scheme share (share_wrapped_paste_key is set).
-    // - Files not yet linked to any paste (e.g. uploaded but not attached)
-    //   are never accessible without authentication.
-    let mut paste_is_expired = false;
     let mut is_publicly_shared = false;
 
     if let Some(paste_slug) = &file.paste_slug {
-        let paste_info: Option<(Option<String>, Option<String>)> =
-            sqlx::query_as("SELECT share_wrapped_paste_key, expires_at FROM pastes WHERE slug = ?")
-                .bind(paste_slug)
-                .fetch_optional(&state.db)
-                .await
-                .unwrap_or(None);
+        let paste_info: Option<(
+            Option<String>,
+            Option<String>,
+            String,
+            Option<String>,
+            Option<String>,
+        )> = sqlx::query_as(
+            "SELECT share_wrapped_paste_key, burn_trigger, burn_action, burn_at, burn_pending_delete_at
+             FROM pastes WHERE slug = ?",
+        )
+        .bind(paste_slug)
+        .fetch_optional(&state.db)
+        .await
+        .unwrap_or(None);
 
-        if let Some((share_wrapped, expires_at)) = paste_info {
-            is_publicly_shared = share_wrapped.is_some();
-
-            if let Some(exp) = expires_at {
-                paste_is_expired = sqlx::query_scalar("SELECT ? <= datetime('now')")
-                    .bind(exp)
+        if let Some((share_wrapped, burn_trigger, burn_action, burn_at, pending_delete_at)) =
+            paste_info
+        {
+            if let Some(pending_at) = pending_delete_at {
+                let pending_expired: bool = sqlx::query_scalar("SELECT ? <= datetime('now')")
+                    .bind(&pending_at)
                     .fetch_one(&state.db)
                     .await
                     .unwrap_or(false);
+
+                if pending_expired {
+                    if let Err(e) = super::paste::delete_paste_unchecked(&state, paste_slug).await {
+                        tracing::error!("Failed to delete pending-burn paste {paste_slug}: {e}");
+                    }
+                    return json_error(StatusCode::GONE, "The associated paste has burned")
+                        .into_response();
+                }
+
+                // Unlock-count delete burns clear sharing but leave encrypted files
+                // briefly available so the recipient who just unlocked can fetch them.
+                is_publicly_shared = true;
+            } else if burn_trigger.as_deref() == Some("time") {
+                let due = if let Some(exp) = burn_at {
+                    sqlx::query_scalar("SELECT ? <= datetime('now')")
+                        .bind(&exp)
+                        .fetch_one(&state.db)
+                        .await
+                        .unwrap_or(false)
+                } else {
+                    false
+                };
+
+                if due && burn_action == "delete" {
+                    if let Err(e) = super::paste::delete_paste_unchecked(&state, paste_slug).await {
+                        tracing::error!("Failed to delete time-burned paste {paste_slug}: {e}");
+                    }
+                    return json_error(StatusCode::GONE, "The associated paste has burned")
+                        .into_response();
+                }
+
+                if due && burn_action == "revoke_share" {
+                    if let Err(e) = sqlx::query(
+                        "UPDATE pastes SET
+                            share_wrapped_paste_key = NULL,
+                            share_auth_salt = NULL,
+                            share_auth_verifier = NULL,
+                            burn_trigger = NULL,
+                            burn_action = 'delete',
+                            burn_at = NULL,
+                            burn_after_unlocks = NULL,
+                            burn_unlocks_used = 0,
+                            burn_pending_delete_at = NULL,
+                            updated_at = datetime('now')
+                         WHERE slug = ?",
+                    )
+                    .bind(paste_slug)
+                    .execute(&state.db)
+                    .await
+                    {
+                        tracing::error!("Failed to revoke time-burned paste {paste_slug}: {e}");
+                    }
+                    let msg = serde_json::json!({ "type": "paste_updated", "slug": paste_slug });
+                    let _ = state.ws_sender.send(msg.to_string());
+                    is_publicly_shared = false;
+                } else {
+                    is_publicly_shared = share_wrapped.is_some();
+                }
+            } else {
+                is_publicly_shared = share_wrapped.is_some();
             }
         }
     }
 
-    if paste_is_expired {
-        return json_error(StatusCode::GONE, "The associated paste has expired").into_response();
+    if !auth::is_authenticated(&headers, &state.auth_key) && !is_publicly_shared {
+        return json_error(StatusCode::FORBIDDEN, "This file is private").into_response();
     }
 
-    if !auth::is_authenticated(&headers, &state.auth_key) {
-        if !is_publicly_shared {
-            return json_error(StatusCode::FORBIDDEN, "This file is private").into_response();
-        }
-    }
-
-    // Stream the file back
     let file_path = std::path::Path::new(&state.uploads_dir).join(&slug);
     let disk_file = match tokio::fs::File::open(&file_path).await {
         Ok(f) => f,
@@ -264,9 +319,8 @@ pub async fn handle_download(
     let mut resp_headers = HeaderMap::new();
     resp_headers.insert(
         header::CONTENT_TYPE,
-        HeaderValue::from_str(&file.mime_type).unwrap_or_else(|_| {
-            HeaderValue::from_static("application/octet-stream")
-        }),
+        HeaderValue::from_str(&file.mime_type)
+            .unwrap_or_else(|_| HeaderValue::from_static("application/octet-stream")),
     );
     resp_headers.insert(
         header::CONTENT_DISPOSITION,
@@ -280,7 +334,6 @@ pub async fn handle_download(
 
     (StatusCode::OK, resp_headers, body).into_response()
 }
-
 /// Helper: Link a list of file slugs to a paste_slug.
 pub async fn link_files_to_paste(
     db: &sqlx::SqlitePool,
@@ -298,29 +351,28 @@ pub async fn link_files_to_paste(
 }
 
 /// Helper: Get all files linked to a paste.
-pub async fn get_files_for_paste(
-    db: &sqlx::SqlitePool,
-    paste_slug: &str,
-) -> Vec<FileEntry> {
-    match sqlx::query_as::<_, FileEntry>("SELECT * FROM files WHERE paste_slug = ? ORDER BY created_at ASC")
-        .bind(paste_slug)
-        .fetch_all(db)
-        .await
+pub async fn get_files_for_paste(db: &sqlx::SqlitePool, paste_slug: &str) -> Vec<FileEntry> {
+    match sqlx::query_as::<_, FileEntry>(
+        "SELECT * FROM files WHERE paste_slug = ? ORDER BY created_at ASC",
+    )
+    .bind(paste_slug)
+    .fetch_all(db)
+    .await
     {
         Ok(files) => files,
         Err(e) => {
-            tracing::error!("Failed to fetch files for paste {} (mapping error?): {:?}", paste_slug, e);
+            tracing::error!(
+                "Failed to fetch files for paste {} (mapping error?): {:?}",
+                paste_slug,
+                e
+            );
             Vec::new()
         }
     }
 }
 
 /// Helper: Delete all files linked to a paste from disk.
-pub async fn delete_files_for_paste(
-    db: &sqlx::SqlitePool,
-    uploads_dir: &str,
-    paste_slug: &str,
-) {
+pub async fn delete_files_for_paste(db: &sqlx::SqlitePool, uploads_dir: &str, paste_slug: &str) {
     let files = get_files_for_paste(db, paste_slug).await;
     for file in &files {
         let path = std::path::Path::new(uploads_dir).join(&file.slug);

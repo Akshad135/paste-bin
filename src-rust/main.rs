@@ -1,7 +1,8 @@
 use std::{net::SocketAddr, path::Path, sync::Arc};
 
 use axum::Router;
-use tower_http::cors::{Any, CorsLayer};
+use axum::http::HeaderValue;
+use tower_http::cors::{Any, AllowOrigin, CorsLayer};
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing_subscriber::{EnvFilter, fmt};
 
@@ -90,8 +91,7 @@ async fn main() {
         .and_then(|p| p.parse().ok())
         .unwrap_or(8788);
     let dist_dir = std::env::var("DIST_DIR").unwrap_or_else(|_| "./dist".to_string());
-    let uploads_dir =
-        std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "./data/uploads".to_string());
+    let uploads_dir = std::env::var("UPLOADS_DIR").unwrap_or_else(|_| "./data/uploads".to_string());
     let max_file_size: usize = std::env::var("MAX_FILE_SIZE")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -100,6 +100,15 @@ async fn main() {
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(524_288); // 512 KB default
+
+    // ALLOWED_ORIGINS controls the CORS policy.
+    // Set to your public URL (e.g. https://paste.example.com) to restrict
+    // cross-origin access and protect the /unlock endpoint from CPU-exhaustion
+    // attacks via malicious third-party pages.
+    // If unset, defaults to "*" (allow all origins) — fine for local dev,
+    // but a WARNING is logged to remind self-hosters to configure this.
+    let allowed_origins_raw = std::env::var("ALLOWED_ORIGINS").unwrap_or_default();
+    let cors_layer = build_cors_layer(&allowed_origins_raw);
 
     // ── Database ───────────────────────────────────────────────────────
     if let Some(parent) = Path::new(&db_path).parent() {
@@ -111,18 +120,27 @@ async fn main() {
     tracing::info!("Database ready at {db_path}");
 
     // ── E2EE salt ──────────────────────────────────────────────────────
-    let data_dir = Path::new(&db_path).parent().map(|p| p.to_str().unwrap_or("./data")).unwrap_or("./data");
+    let data_dir = Path::new(&db_path)
+        .parent()
+        .map(|p| p.to_str().unwrap_or("./data"))
+        .unwrap_or("./data");
     let salt = db::ensure_salt(data_dir);
     tracing::info!("E2EE salt ready");
 
     // ── Uploads directory ──────────────────────────────────────────────
     std::fs::create_dir_all(&uploads_dir).expect("Failed to create uploads directory");
-    tracing::info!(
-        "Uploads directory ready at {uploads_dir}"
-    );
+    tracing::info!("Uploads directory ready at {uploads_dir}");
 
     // ── Shared state ───────────────────────────────────────────────────
-    let state = Arc::new(AppState::new(pool, auth_key, dist_dir, uploads_dir, max_file_size, max_text_size, salt));
+    let state = Arc::new(AppState::new(
+        pool,
+        auth_key,
+        dist_dir,
+        uploads_dir,
+        max_file_size,
+        max_text_size,
+        salt,
+    ));
 
     tracing::info!(
         "Limits: text={} KB, file={} MB",
@@ -133,73 +151,112 @@ async fn main() {
     // ── Background Cleanup Task ────────────────────────────────────────
     let cleanup_state = state.clone();
     tokio::spawn(async move {
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60)); // 1 minute
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
         loop {
             interval.tick().await;
             tracing::info!("Running cleanup task...");
 
-            // Single pass: collect every file slug that belongs to an expired
-            // paste OR was never linked to any paste at all (orphaned upload).
-            // Both cases are equally garbage at this point.
-            let stale_files: Result<Vec<(String,)>, _> = sqlx::query_as(
-                "SELECT f.slug FROM files f
-                 LEFT JOIN pastes p ON f.paste_slug = p.slug
-                 WHERE (p.expires_at IS NOT NULL AND p.expires_at <= datetime('now'))
-                    OR (f.paste_slug IS NULL AND f.created_at <= datetime('now', '-15 minutes'))"
+            let orphan_files: Result<Vec<(String,)>, _> = sqlx::query_as(
+                "SELECT slug FROM files
+                 WHERE paste_slug IS NULL AND created_at <= datetime('now', '-15 minutes')",
             )
             .fetch_all(&cleanup_state.db)
             .await;
 
-            match stale_files {
-                Ok(files) => {
-                    for (slug,) in files {
-                        tracing::info!("Deleting stale file: {}", slug);
-                        let path = std::path::Path::new(&cleanup_state.uploads_dir).join(&slug);
-                        if path.exists() {
-                            if let Err(e) = tokio::fs::remove_file(&path).await {
-                                tracing::warn!("Failed to remove file {} from disk: {e}", slug);
-                            }
+            if let Ok(files) = orphan_files {
+                for (slug,) in files {
+                    tracing::info!("Deleting orphaned upload: {}", slug);
+                    let path = std::path::Path::new(&cleanup_state.uploads_dir).join(&slug);
+                    if path.exists() {
+                        if let Err(e) = tokio::fs::remove_file(&path).await {
+                            tracing::warn!("Failed to remove file {} from disk: {e}", slug);
                         }
-                        if let Err(e) = sqlx::query("DELETE FROM files WHERE slug = ?")
-                            .bind(&slug)
-                            .execute(&cleanup_state.db)
-                            .await
+                    }
+                    if let Err(e) = sqlx::query("DELETE FROM files WHERE slug = ?")
+                        .bind(&slug)
+                        .execute(&cleanup_state.db)
+                        .await
+                    {
+                        tracing::error!("Failed to remove file {} from DB: {}", slug, e);
+                    }
+                }
+            }
+
+            let due_delete_slugs: Result<Vec<(String,)>, _> = sqlx::query_as(
+                "SELECT slug FROM pastes
+                 WHERE (burn_trigger = 'time' AND burn_action = 'delete' AND burn_at IS NOT NULL AND burn_at <= datetime('now'))
+                    OR (burn_pending_delete_at IS NOT NULL AND burn_pending_delete_at <= datetime('now'))"
+            )
+            .fetch_all(&cleanup_state.db)
+            .await;
+
+            match due_delete_slugs {
+                Ok(slugs) => {
+                    for (slug,) in slugs {
+                        tracing::info!("Deleting burned paste: {}", slug);
+                        if let Err(e) =
+                            routes::paste::delete_paste_unchecked(&cleanup_state, &slug).await
                         {
-                            tracing::error!("Failed to remove file {} from DB: {}", slug, e);
+                            tracing::error!("Failed to delete burned paste {}: {}", slug, e);
                         }
                     }
                 }
-                Err(e) => tracing::error!("Failed to fetch stale files: {}", e),
+                Err(e) => tracing::error!("Failed to fetch burned pastes for deletion: {}", e),
             }
 
-            // Now remove the expired paste rows themselves (files are already gone).
-            if let Err(e) = sqlx::query(
-                "DELETE FROM pastes WHERE expires_at IS NOT NULL AND expires_at <= datetime('now')"
+            let due_revoke_slugs: Result<Vec<(String,)>, _> = sqlx::query_as(
+                "SELECT slug FROM pastes
+                 WHERE burn_trigger = 'time'
+                   AND burn_action = 'revoke_share'
+                   AND burn_at IS NOT NULL
+                   AND burn_at <= datetime('now')",
             )
-            .execute(&cleanup_state.db)
-            .await
-            {
-                tracing::error!("Failed to delete expired pastes from DB: {}", e);
+            .fetch_all(&cleanup_state.db)
+            .await;
+
+            match due_revoke_slugs {
+                Ok(slugs) => {
+                    for (slug,) in slugs {
+                        tracing::info!("Revoking burned share access: {}", slug);
+                        if let Err(e) = sqlx::query(
+                            "UPDATE pastes SET
+                                share_wrapped_paste_key = NULL,
+                                share_auth_salt = NULL,
+                                share_auth_verifier = NULL,
+                                burn_trigger = NULL,
+                                burn_action = 'delete',
+                                burn_at = NULL,
+                                burn_after_unlocks = NULL,
+                                burn_unlocks_used = 0,
+                                burn_pending_delete_at = NULL,
+                                updated_at = datetime('now')
+                             WHERE slug = ?",
+                        )
+                        .bind(&slug)
+                        .execute(&cleanup_state.db)
+                        .await
+                        {
+                            tracing::error!("Failed to revoke burned share {}: {}", slug, e);
+                            continue;
+                        }
+                        let msg = serde_json::json!({ "type": "paste_updated", "slug": slug });
+                        let _ = cleanup_state.ws_sender.send(msg.to_string());
+                    }
+                }
+                Err(e) => tracing::error!("Failed to fetch burned shares for revoke: {}", e),
             }
         }
     });
-
     // ── Router ─────────────────────────────────────────────────────────
     let app = Router::new()
         .nest("/api", routes::api_router())
         .fallback_service(
-            tower_http::services::ServeDir::new(&state.dist_dir)
-                .not_found_service(tower_http::services::ServeFile::new(
-                    format!("{}/index.html", state.dist_dir)
-                ))
+            tower_http::services::ServeDir::new(&state.dist_dir).not_found_service(
+                tower_http::services::ServeFile::new(format!("{}/index.html", state.dist_dir)),
+            ),
         )
         .layer(RequestBodyLimitLayer::new(state.max_file_size))
-        .layer(
-            CorsLayer::new()
-                .allow_origin(Any)
-                .allow_methods(Any)
-                .allow_headers(Any),
-        )
+        .layer(cors_layer)
         .with_state(state);
 
     // ── Start ──────────────────────────────────────────────────────────
@@ -215,4 +272,49 @@ async fn main() {
     )
     .await
     .expect("Server error");
+}
+
+/// Build a CORS layer from the ALLOWED_ORIGINS environment variable.
+///
+/// - A non-empty value is treated as the single allowed origin (exact match).
+///   Multiple origins are not supported intentionally — use a reverse proxy
+///   for that case.
+/// - An empty value falls back to `*` with a startup warning, preserving
+///   zero-config local development while nudging self-hosters to set it.
+fn build_cors_layer(allowed_origins: &str) -> CorsLayer {
+    let trimmed = allowed_origins.trim().trim_end_matches('/');
+
+    if trimmed.is_empty() {
+        tracing::warn!(
+            "ALLOWED_ORIGINS is not set — CORS is open to all origins (*).
+             This is fine for local development, but you should set
+             ALLOWED_ORIGINS=https://your-domain.com in production to protect
+             the /unlock endpoint from cross-origin CPU-exhaustion attacks."
+        );
+        return CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any);
+    }
+
+    match trimmed.parse::<HeaderValue>() {
+        Ok(origin) => {
+            tracing::info!("CORS restricted to origin: {trimmed}");
+            CorsLayer::new()
+                .allow_origin(AllowOrigin::exact(origin))
+                .allow_methods(Any)
+                .allow_headers(Any)
+        }
+        Err(_) => {
+            tracing::error!(
+                "ALLOWED_ORIGINS value '{}' is not a valid HTTP origin. \
+                 Falling back to open CORS (*).",
+                trimmed
+            );
+            CorsLayer::new()
+                .allow_origin(Any)
+                .allow_methods(Any)
+                .allow_headers(Any)
+        }
+    }
 }

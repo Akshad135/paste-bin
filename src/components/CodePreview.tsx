@@ -1,25 +1,9 @@
 import { useEffect, useState } from 'react';
 import { codeToHtml } from 'shiki';
 import { useTheme } from '@/components/ThemeProvider';
+import { LANG_MAP } from '@/lib/constants';
 
 // Map our language values to shiki language identifiers
-const LANG_MAP: Record<string, string> = {
-    plaintext: 'text',
-    shellscript: 'shellscript',
-    cpp: 'cpp',
-    csharp: 'csharp',
-    dockerfile: 'dockerfile',
-    makefile: 'makefile',
-    proto: 'protobuf',
-    terraform: 'hcl',
-    jsx: 'jsx',
-    tsx: 'tsx',
-    vue: 'vue',
-    svelte: 'svelte',
-    astro: 'astro',
-    nginx: 'nginx',
-};
-
 interface CodePreviewProps {
     code: string;
     language: string;

@@ -133,11 +133,21 @@ const SHARE_PBKDF2_ITERATIONS = 600_000;
  * Uses an unambiguous alphabet (no 0/O/I/l confusion).
  */
 export function generateAccessCode(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(ACCESS_CODE_LENGTH * 2));
+  // Rejection-sampling approach: discard any byte >= 240 (the largest
+  // multiple of 30 that fits in a u8) so that every remaining byte maps
+  // uniformly to one of the 30 alphabet characters.
+  // Without rejection, bytes 0-15 would be picked ~3.5% of the time vs
+  // ~3.1% for bytes 16-29, a measurable bias that reduces entropy.
+  const REJECT_THRESHOLD = Math.floor(256 / ACCESS_CODE_CHARS.length) * ACCESS_CODE_CHARS.length; // 240
   let result = '';
-  for (let i = 0; i < bytes.length && result.length < ACCESS_CODE_LENGTH; i++) {
-    const idx = bytes[i] % ACCESS_CODE_CHARS.length;
-    result += ACCESS_CODE_CHARS[idx];
+  while (result.length < ACCESS_CODE_LENGTH) {
+    // Request extra bytes to reduce the number of iterations needed
+    const bytes = crypto.getRandomValues(new Uint8Array(ACCESS_CODE_LENGTH * 2));
+    for (let i = 0; i < bytes.length && result.length < ACCESS_CODE_LENGTH; i++) {
+      if (bytes[i] < REJECT_THRESHOLD) {
+        result += ACCESS_CODE_CHARS[bytes[i] % ACCESS_CODE_CHARS.length];
+      }
+    }
   }
   return result;
 }

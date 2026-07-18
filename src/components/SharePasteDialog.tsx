@@ -23,6 +23,7 @@ interface SharePasteDialogProps {
     pasteSlug: string;
     encryptedPasteKey: string;
     onSuccess: (shareWrappedPasteKey: string) => void;
+    burnAction?: 'revoke_share' | 'delete';
 }
 
 export function SharePasteDialog({
@@ -30,7 +31,8 @@ export function SharePasteDialog({
     onOpenChange,
     pasteSlug,
     encryptedPasteKey,
-    onSuccess
+    onSuccess,
+    burnAction
 }: SharePasteDialogProps) {
     const { masterKey } = useAuth();
     const [accessCode, setAccessCode] = useState('');
@@ -119,7 +121,7 @@ export function SharePasteDialog({
                     <DialogTitle>Share Paste</DialogTitle>
                     <DialogDescription>
                         An access code has been generated. Share the link and this code
-                        with your recipient.
+                        with your recipient.{burnAction === 'revoke_share' ? ' The access code will revoke automatically when the burn rule is met.' : ''}
                     </DialogDescription>
                 </DialogHeader>
 
